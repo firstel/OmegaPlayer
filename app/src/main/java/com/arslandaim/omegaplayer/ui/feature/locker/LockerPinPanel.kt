@@ -9,7 +9,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -35,7 +39,7 @@ internal fun LockerPinPanel(
                 Text(stringResource(R.string.enter_pin_sub), style = MaterialTheme.typography.bodyMedium,
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(vertical = 12.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(vertical = 12.dp).semantics { stateDescription = "$pinLength of 4 digits entered" }) {
                     repeat(4) { index ->
                         Box(Modifier.size(14.dp).clip(CircleShape).background(
                             if (index < pinLength) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant))
@@ -71,5 +75,62 @@ internal fun LockerPinPanel(
                 keypad()
             }
         }
+    }
+}
+
+/** Editing cancels an outstanding verification; stale results must never unlock the vault. */
+@Composable
+internal fun LockerPinInput(
+    verify: suspend (String) -> Boolean,
+    onUnlocked: () -> Unit,
+    onIncorrect: () -> Unit,
+    onBiometric: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var input by remember { mutableStateOf("") }
+    var checking by remember { mutableStateOf(false) }
+    var revision by remember { mutableIntStateOf(0) }
+    var verification by remember { mutableStateOf<Job?>(null) }
+    val scope = rememberCoroutineScope()
+    val currentVerify by rememberUpdatedState(verify)
+    val currentUnlocked by rememberUpdatedState(onUnlocked)
+    val currentIncorrect by rememberUpdatedState(onIncorrect)
+
+    fun submit() {
+        if (checking || input.length != 4) return
+        val submitted = input
+        val submittedRevision = revision
+        checking = true
+        verification = scope.launch {
+            try {
+                val correct = currentVerify(submitted)
+                if (revision == submittedRevision) {
+                    if (correct) currentUnlocked()
+                    else { input = ""; currentIncorrect() }
+                }
+            } finally {
+                if (revision == submittedRevision) checking = false
+            }
+        }
+    }
+
+    Box(modifier) {
+        LockerPinPanel(input.length, onKey = { key ->
+            when (key) {
+                "Back" -> {
+                    revision++
+                    verification?.cancel()
+                    checking = false
+                    input = input.dropLast(1)
+                }
+                "OK" -> submit()
+                else -> if (!checking && input.length < 4) {
+                    input += key
+                    revision++
+                    if (input.length == 4) submit()
+                }
+            }
+        }, onBiometric = onBiometric)
+        if (checking) CircularProgressIndicator(Modifier.align(Alignment.TopEnd).padding(12.dp).size(24.dp))
     }
 }

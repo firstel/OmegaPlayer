@@ -10,6 +10,8 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.test.platform.app.InstrumentationRegistry
 import com.arslandaim.omegaplayer.ui.feature.locker.LockerPinPanel
+import com.arslandaim.omegaplayer.ui.feature.locker.LockerPinInput
+import kotlinx.coroutines.CompletableDeferred
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -80,4 +82,28 @@ class LandscapeLayoutTest {
         compose.onNodeWithContentDescription("Unlock").performClick()
         assertEquals(listOf("1", "2", "Back", "0", "OK"), keys)
     }
+    @Test fun deleteUpdatesDotsWhileVerificationIsPending() {
+        val result = CompletableDeferred<Boolean>()
+        var attempts = 0
+        var unlocked = false
+        compose.setContent {
+            MaterialTheme { Surface {
+                LockerPinInput(verify = { attempts++; result.await() },
+                    onUnlocked = { unlocked = true }, onIncorrect = {}, onBiometric = {})
+            } }
+        }
+        listOf("1", "2", "3", "4").forEach { compose.onNodeWithText(it).performClick() }
+        compose.waitUntil { attempts == 1 }
+        compose.onNode(hasStateDescription("4 of 4 digits entered")).assertExists()
+        compose.onNodeWithContentDescription("Delete last digit").performClick()
+        compose.onNode(hasStateDescription("3 of 4 digits entered")).assertExists()
+        compose.runOnIdle { result.complete(true) }
+        compose.waitForIdle()
+        org.junit.Assert.assertFalse(unlocked)
+        repeat(3) { compose.onNodeWithContentDescription("Delete last digit").performClick() }
+        compose.onNode(hasStateDescription("0 of 4 digits entered")).assertExists()
+        compose.onNodeWithText("5").performClick()
+        compose.onNode(hasStateDescription("1 of 4 digits entered")).assertExists()
+    }
+
 }

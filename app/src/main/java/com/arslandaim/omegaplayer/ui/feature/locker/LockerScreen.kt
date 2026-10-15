@@ -129,37 +129,17 @@ fun LockerAuthScreen(
     val context = LocalContext.current
     val activity = context as? FragmentActivity
     val scope = rememberCoroutineScope()
-    var pinInput by remember { mutableStateOf("") }
-    var verifying by remember { mutableStateOf(false) }
 
-    fun verifyPin(submitted: String) {
-        if (verifying || submitted.length != 4) return
-        verifying = true
-        scope.launch {
-            try {
-                val settings = viewModel.getSettings()
-                if (settings?.pin == SecurityUtils.hashString(submitted)) viewModel.unlock(true)
-                else {
-                    Toast.makeText(context, "Incorrect PIN", Toast.LENGTH_SHORT).show()
-                    pinInput = ""
-                }
-            } finally { verifying = false }
-        }
-    }
-
-    LockerPinPanel(
-        pinLength = pinInput.length,
+    LockerPinInput(
         modifier = Modifier.statusBarsPadding().padding(bottom = bottomPadding),
-        onKey = { key ->
-            if (!verifying) when (key) {
-                "Back" -> pinInput = pinInput.dropLast(1)
-                "OK" -> verifyPin(pinInput)
-                else -> if (pinInput.length < 4) {
-                    pinInput += key
-                    if (pinInput.length == 4) verifyPin(pinInput)
-                }
+        verify = { submitted ->
+            val settings = viewModel.getSettings()
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                settings?.pin == SecurityUtils.hashString(submitted)
             }
         },
+        onUnlocked = { viewModel.unlock(true) },
+        onIncorrect = { Toast.makeText(context, "Incorrect PIN", Toast.LENGTH_SHORT).show() },
         onBiometric = {
             scope.launch {
                 val settings = viewModel.getSettings()
@@ -216,6 +196,8 @@ fun LockerSetupScreen(
     var question by remember { mutableStateOf("") }
     var answer by remember { mutableStateOf("") }
     var recoveryStep by remember { mutableStateOf(false) }
+    var saving by remember { mutableStateOf(false) }
+    val context = LocalContext.current
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
     val keyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
     val setupScroll = rememberScrollState()
@@ -245,14 +227,14 @@ fun LockerSetupScreen(
                     style = MaterialTheme.typography.titleMedium)
                 if (!recoveryStep) {
                     OutlinedTextField(value = pin,
-                        onValueChange = { if (it.length <= 4 && it.all(Char::isDigit)) pin = it },
+                        onValueChange = { pin = it.filter { digit -> digit in '0'..'9' }.take(4) },
                         label = { Text(stringResource(R.string.pin_label)) },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                         visualTransformation = PasswordVisualTransformation(),
                         modifier = Modifier.fillMaxWidth())
                     OutlinedTextField(value = confirmation,
-                        onValueChange = { if (it.length <= 4 && it.all(Char::isDigit)) confirmation = it },
+                        onValueChange = { confirmation = it.filter { digit -> digit in '0'..'9' }.take(4) },
                         label = { Text("Confirm PIN") }, singleLine = true,
                         isError = confirmation.length == 4 && confirmation != pin,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
@@ -278,12 +260,19 @@ fun LockerSetupScreen(
                         focusManager.clearFocus()
                         keyboard?.hide()
                         if (!recoveryStep) recoveryStep = true
-                        else viewModel.saveSettings(LockerSettings(pin = pin,
-                            securityQuestion = question.trim(), securityAnswer = answer.trim()))
-                    }, enabled = if (recoveryStep) question.isNotBlank() && answer.isNotBlank()
-                        else pin.length == 4 && pin == confirmation,
+                        else {
+                            saving = true
+                            viewModel.saveSettings(LockerSettings(pin = pin,
+                                securityQuestion = question.trim(), securityAnswer = answer.trim())) { success ->
+                                saving = false
+                                if (!success) Toast.makeText(context, "Could not save vault settings. Please try again.", Toast.LENGTH_LONG).show()
+                            }
+                        }
+                    }, enabled = !saving && (if (recoveryStep) question.isNotBlank() && answer.isNotBlank()
+                        else pin.length == 4 && pin == confirmation),
                         modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
-                        Text(stringResource(if (recoveryStep) R.string.vault_setup_create else R.string.vault_setup_next))
+                        if (saving) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                        else Text(stringResource(if (recoveryStep) R.string.vault_setup_create else R.string.vault_setup_next))
                     }
                 }
             }
