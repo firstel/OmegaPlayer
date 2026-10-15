@@ -61,7 +61,10 @@ class MainLandscapeTest {
             compose.onNodeWithText("Next: recovery").assertIsEnabled()
             screenshot("locker-setup-landscape")
             compose.onNodeWithText("Next: recovery").performClick()
-            compose.waitUntil(5_000) { compose.onNodeWithText("Create vault").isDisplayed() }
+            compose.waitForIdle()
+            screenshot("locker-recovery-before-scroll")
+            println(compose.onRoot().printToString())
+            compose.onNodeWithText("Create vault").performScrollTo()
             screenshot("locker-recovery-landscape")
             compose.onNodeWithText("Create vault").assertIsDisplayed().assertIsNotEnabled()
         } finally { resolver.delete(uri, null, null) }

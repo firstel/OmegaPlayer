@@ -218,6 +218,8 @@ fun LockerSetupScreen(
     var recoveryStep by remember { mutableStateOf(false) }
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
     val keyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+    val setupScroll = rememberScrollState()
+    LaunchedEffect(recoveryStep) { setupScroll.scrollTo(0) }
     BackHandler(enabled = recoveryStep) {
         focusManager.clearFocus()
         keyboard?.hide()
@@ -287,18 +289,18 @@ fun LockerSetupScreen(
             }
         }
         if (wide) {
-            Row(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
+            Row(Modifier.fillMaxSize().verticalScroll(setupScroll).padding(24.dp),
                 horizontalArrangement = Arrangement.spacedBy(32.dp),
                 verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.weight(1f)) { introduction() }
-                Box(Modifier.weight(1f).widthIn(max = 480.dp)) { form() }
+                Box(Modifier.weight(1f).widthIn(max = 480.dp)) { key(recoveryStep) { form() } }
             }
         } else {
-            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+            Column(Modifier.fillMaxSize().verticalScroll(setupScroll)
                 .wrapContentWidth(Alignment.CenterHorizontally).widthIn(max = 480.dp).padding(24.dp),
                 verticalArrangement = Arrangement.spacedBy(24.dp)) {
                 introduction()
-                form()
+                key(recoveryStep) { form() }
             }
         }
     }
