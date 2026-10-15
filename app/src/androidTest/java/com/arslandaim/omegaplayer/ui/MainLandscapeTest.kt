@@ -20,9 +20,17 @@ class MainLandscapeTest {
     @get:Rule(order = 1) val compose = createAndroidComposeRule<MainActivity>()
 
     private fun screenshot(name: String) {
-        val file = File(compose.activity.getExternalFilesDir(null), "layout-captures/$name.png")
-        file.parentFile!!.mkdirs()
-        file.outputStream().use { compose.onRoot().captureToImage().asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, it) }
+        val context = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext
+        val resolver = context.contentResolver
+        val uri = resolver.insert(android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+            android.content.ContentValues().apply {
+                put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, "$name.png")
+                put(android.provider.MediaStore.Images.Media.MIME_TYPE, "image/png")
+                put(android.provider.MediaStore.Images.Media.RELATIVE_PATH, "Pictures/OmegaPlayerLayout")
+            })!!
+        resolver.openOutputStream(uri)!!.use {
+            compose.onRoot().captureToImage().asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, it)
+        }
     }
 
     @Test fun populatedLibraryAndNavigationFitLandscape() {
@@ -40,10 +48,10 @@ class MainLandscapeTest {
             compose.onNodeWithText("1 folder", useUnmergedTree = true).assertIsDisplayed()
             compose.onNodeWithText("OmegaLayoutCheck").assertIsDisplayed()
             screenshot("library-landscape")
-            compose.onNodeWithContentDescription("Settings").performClick()
+            compose.onNodeWithContentDescription("Settings", useUnmergedTree = true).performClick()
             compose.waitForIdle()
             screenshot("settings-landscape")
-            compose.onNodeWithContentDescription("Locker").performClick()
+            compose.onNodeWithContentDescription("Locker", useUnmergedTree = true).performClick()
             compose.waitForIdle()
             screenshot("locker-setup-landscape")
         } finally { resolver.delete(uri, null, null) }
