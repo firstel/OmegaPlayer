@@ -12,14 +12,21 @@ usable. Android Settings can revoke access. If access expires, or a card is
 removed, the browser shows a recovery message; reinsert it and Refresh, or
 select the folder again. Cancelling the picker preserves the old selection.
 
-The browser queries immediate children on a background thread and only shows
-folders and audio/video documents. It does not recursively scan the whole card.
+The browser queries immediate children on a background thread and shows folders
+and media documents. Selecting a folder also recursively adds its videos to the
+main Videos library, under labels such as SD card · Movies. It only scans the
+selected tree, not the rest of the card. A toolbar refresh and app resume rescan
+the library. Changing the selected folder replaces its contribution to the library.
 MIME types identify media, with an extension fallback for providers reporting no
-type or application/octet-stream. Virtual documents are excluded. Playback uses
+type or application container types such as application/x-matroska. Virtual documents are excluded. Playback uses
 content URIs directly in the existing Media3 service. Codec support remains
 that of the device/player. MediaStore scanning and library folders are unchanged.
-SAF-only files are not added to the MediaStore library or its history/locker
-metadata; audio falls back to a single-item queue if absent from the library.
+SD videos participate in the app library, thumbnails, playlists and playback
+history without being inserted into Android MediaStore. Read-only SAF items
+do not expose the library’s destructive delete/locker actions. Video duration is
+discovered during playback. Audio still falls back to a single-item queue when
+absent from MediaStore. Compact screens hide the fixed storage panel to leave
+room for the scrollable library, with search and folder controls in the toolbar.
 
 ## Verification
 
@@ -63,3 +70,21 @@ Copy/download the APK to the Android device, open it, and permit installation
 from that browser/file manager when Android asks. Open OmegaPlayer SD, tap
 SD card folders, and choose the desired media folder on the SD card.
 Physical AYN Thor playback and SD-card reboot/removal checks still require the device.
+
+
+### Main-library preview 1.3.0
+
+Verified source: `7fbc1a9aae965c1be1ffeaed17a4cae56f020169`.
+Build: https://github.com/firstel/OmegaPlayer/actions/runs/38800919059
+Release: https://github.com/firstel/OmegaPlayer/releases/tag/sdcard-preview-2
+
+Assembly and all 9 tests passed. Lint: 0 errors, 65 warnings, 3 hints.
+Tests cover recursive scanning, duplicate/cyclic entries, non-video exclusion,
+root revocation, inaccessible children, cancellation and MIME classification.
+The distributed APK passed v2/v3 signature verification and 16 KB ZIP alignment.
+Thor hardware playback and compact layout still need device testing.
+
+This preview uses a retained local signing key. Uninstall the earlier OmegaPlayer
+SD preview once before installing 1.3.0, then reselect the SD Movies folder. This
+resets preview app settings/history without removing shared SD-card media or
+changing the original OmegaPlayer app. On Home, open Videos, then SD card · Movies.
