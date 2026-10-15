@@ -24,6 +24,7 @@ paging = "3.5.0"
 hiltNavigation = "1.3.0"
 
 [libraries]
+androidx-test-rules = { group = "androidx.test", name = "rules", version = "1.7.0" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
