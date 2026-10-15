@@ -499,7 +499,7 @@ fun SecurityVerificationDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.verify_identity), fontWeight = FontWeight.Bold) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(stringResource(R.string.security_question_prompt), style = MaterialTheme.typography.bodyMedium)
                 Text(question, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
                 OutlinedTextField(
@@ -542,11 +542,12 @@ fun ChangePinModernDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.new_security_pin), fontWeight = FontWeight.Bold) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(stringResource(R.string.enter_new_pin_prompt), style = MaterialTheme.typography.bodyMedium)
                 OutlinedTextField(
                     value = newPin,
-                    onValueChange = { if (it.length <= 4) newPin = it },
+                    singleLine = true,
+                    onValueChange = { if (it.length <= 4 && it.all(Char::isDigit)) newPin = it },
                     label = { Text(stringResource(R.string.pin_label)) },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),

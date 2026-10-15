@@ -749,8 +749,8 @@ fun AudioPlayerScreen(
                         )
                     }
 
-                    // Waveform Visualizer
-                    WaveformVisualizer(
+                    // Preserve space for seek and transport controls in short windows.
+                    if (!landscape) WaveformVisualizer(
                         isPlaying = isPlaying,
                         modifier = Modifier.padding(vertical = if (landscape) 4.dp else 20.dp),
                         color = MaterialTheme.colorScheme.primary

@@ -374,7 +374,7 @@ fun LockedVideosList(
                 // Show videos in the selected folder
                 val folderVideos = groupedVideos[expandedFolder] ?: emptyList()
                 LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
+                    columns = GridCells.Adaptive(160.dp),
                     modifier = contentModifier,
                     contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp + bottomPadding),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -401,7 +401,7 @@ fun LockedVideosList(
             } else {
                 // Show folders and individual videos
                 LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
+                    columns = GridCells.Adaptive(160.dp),
                     modifier = contentModifier,
                     contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp + bottomPadding),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),

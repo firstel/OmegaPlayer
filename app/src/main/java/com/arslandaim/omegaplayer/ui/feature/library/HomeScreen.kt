@@ -563,11 +563,11 @@ fun HomeScreen(
                     EmptyState(searchQuery.isNotEmpty(), false)
                 } else {
                     if (isGridView) {
-                        LazyVerticalGrid(columns = GridCells.Fixed(2), modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 16.dp + bottomPadding), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        LazyVerticalGrid(columns = if (isCompact) GridCells.Adaptive(160.dp) else GridCells.Fixed(2), modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 16.dp + bottomPadding), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             if (currentSelectedFolder == null && selectedPlaylistForDetails == null) {
-                                if (pageTab != MediaTab.PLAYLISTS && recentPlayback.isNotEmpty()) { item(span = { GridItemSpan(2) }) { RecentPlaybackSection(recentPlayback, onVideoClick, onAudioClick, onViewAllHistoryClick) } }
+                                if (pageTab != MediaTab.PLAYLISTS && recentPlayback.isNotEmpty()) { item(span = { GridItemSpan(maxLineSpan) }) { RecentPlaybackSection(recentPlayback, onVideoClick, onAudioClick, onViewAllHistoryClick) } }
                                 if (pageTab == MediaTab.PLAYLISTS) {
-                                    if (playlists.isNotEmpty()) { items(playlists, key = { it.id }, span = { GridItemSpan(2) }) { playlist -> PlaylistListItem(playlist, { selectedPlaylistForDetails = playlist }, { audioViewModel.deletePlaylist(playlist) }) } }
+                                    if (playlists.isNotEmpty()) { items(playlists, key = { it.id }, span = { GridItemSpan(maxLineSpan) }) { playlist -> PlaylistListItem(playlist, { selectedPlaylistForDetails = playlist }, { audioViewModel.deletePlaylist(playlist) }) } }
                                 } else {
                                     items(filteredFolders.keys.toList(), key = { it }) { folderName -> FolderGridItem(name = folderName, count = filteredFolders[folderName] ?: 0, onClick = { if (pageTab == MediaTab.VIDEOS) viewModel.setSelectedFolder(folderName) else audioViewModel.setSelectedFolder(folderName) }) }
                                 }
