@@ -184,3 +184,35 @@ Stop/reset and Close/detachment. Existing layout and setup checks also passed.
 Lint: 0 errors, 68 warnings, 3 hints. Signed APK v2/v3 signatures and 16 KB ZIP
 alignment verified with the retained preview signing key.
 SHA-256: `43be2fd4b8782a2e515e1ecec86646e23579f4f01d0ea8b71b9feb2f863ebb83`.
+
+### Automatic controls and thumbnail timeline preview 1.4.2
+
+Second-display controls are enabled by default for each video URI. An available
+presentation display is used automatically; no display IDs are hard-coded.
+The manual top-screen toggle remains available. A different video re-enables
+the automatic panel and resets the player and top-screen speed state to 1.0×.
+**Close video** saves progress before stopping/clearing the session, dismisses
+the panel and navigates back, removing the mini-player. Stop retains its existing
+rewind-and-stop behavior.
+
+The bottom panel adds volume down/up in 10% steps (bounded to 0–100%) and a level
+indicator. Six 160×90 previews are extracted on one background worker using the
+video URI and shown above the seek slider. Each cell seeks to its approximate
+sample position. Preview generation is cancelled/invalidated on media changes
+and panel disposal; no thumbnails or media copies are written to storage.
+Unavailable previews leave playback usable. The panel scrolls in short windows.
+
+Verified source: `da4098999168595fa13afab9a47b91ccdba43bf0`.
+Build: https://github.com/firstel/OmegaPlayer/actions/runs/38818645609
+Release: https://github.com/firstel/OmegaPlayer/releases/tag/sdcard-preview-6
+
+APK assembly, all 9 unit tests and all 10 Android tests passed. Added checks cover
+automatic presentation opening and re-enabling for a different video URI,
+session clearing/close callback, reset from 2× to 1× when preparing a new item,
+volume increments and upper clamping, and loading six real previews through a
+MediaStore URI with a thumbnail tap mapped to its sample timestamp. The preview
+test uses a generated 2-second test-pattern MP4 included only in test assets.
+Existing PIN/library/metadata/transport checks also passed. Lint: 0 errors,
+70 warnings, 3 hints. APK v2/v3 signature and 16 KB ZIP alignment verified.
+SHA-256: `bd0435bd97ef7e31984280af7f27f2df07fd274560f9b95a02c723eb9573ba5b`.
+Actual Thor thumbnail performance and final screen layout remain device checks.
