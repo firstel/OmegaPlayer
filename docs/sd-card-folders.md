@@ -84,10 +84,13 @@ root revocation, inaccessible children, cancellation and MIME classification.
 The distributed APK passed v2/v3 signature verification and 16 KB ZIP alignment.
 Thor hardware playback and compact layout still need device testing.
 
-This preview uses a retained local signing key. Uninstall the earlier OmegaPlayer
-SD preview once before installing 1.3.0, then reselect the SD Movies folder. This
-resets preview app settings/history without removing shared SD-card media or
-changing the original OmegaPlayer app. On Home, open Videos, then SD card · Movies.
+This preview introduced a retained local signing key. The earlier 1.2.1 preview
+used another certificate, so Android cannot update it in place. Before removing
+that earlier preview, export any vault videos and back them up: uninstalling
+removes app-private vault files as well as settings and history. Shared SD-card
+media and the separate original OmegaPlayer app are unaffected. Versions 1.3.0
+and newer share the retained key and must be installed as updates without
+uninstalling. On Home, open Videos, then SD card · Movies.
 
 ### Landscape UI preview 1.3.1
 
@@ -114,3 +117,39 @@ and 16 KB ZIP alignment. Physical Thor validation remains a device check.
 Install 1.3.1 over the 1.3.0 preview without uninstalling: the retained signing
 key and application ID match, preserving settings, PIN and selected-folder
 access. Screenshots use emulator colors; device wallpaper colors can differ.
+
+### Dual-screen controls and vault setup preview 1.4.0
+
+Start OmegaPlayer SD on the Thor's top screen, open a video, tap the video to
+show its controls, then choose **Bottom-screen controls**. A control-only Android
+Presentation uses the existing player/session on a presentation-category second
+display; it never creates another decoder or audio stream. It provides play/pause,
+rewind/fast-forward and a seek bar. Use **Turn off bottom controls** on the video
+to return the second display to the launcher. If Android reports no suitable
+display, the app explains this and continues normal playback. Display IDs are
+not hard-coded. Panel resources detach when dismissed, playback closes, the
+activity stops, a display changes/disconnects, or the on-screen player lock is
+engaged. Displaying it on a physical Thor, including touch routing, remains a
+hardware validation step.
+
+Vault creation now uses two shorter steps with PIN confirmation, recovery
+question/answer, disabled actions until fields are valid, and a landscape
+side-by-side introduction/form. It explains that app-private vault files are
+removed by uninstalling or clearing app data. Original OmegaPlayer and OmegaPlayer
+SD have different application IDs and independent vaults. Uninstalling normally
+already removes the local private files; do not delete shared originals as a
+cleanup measure. This update does not delete, migrate or recover any vault files.
+
+Verified source: `53281258b71dcc8ecc2bb744a326fc148d9cc165`.
+Build: https://github.com/firstel/OmegaPlayer/actions/runs/38812826290
+Release: https://github.com/firstel/OmegaPlayer/releases/tag/sdcard-preview-4
+
+APK assembly, all 9 unit tests and all 7 Android tests passed. The added virtual
+display test shows a second-display panel, verifies it shares the player,
+activates playback and detaches the player on dismissal. Setup tests enter and
+confirm a PIN, advance to recovery, and check disabled incomplete actions.
+Both landscape setup steps were captured and inspected; the complete recovery
+form and action fit before scrolling. Lint: 0 errors, 67 warnings, 3 hints.
+The release APK passed v2/v3 signature verification and 16 KB ZIP alignment.
+SHA-256: `989c6bf41ec3c55492e30cef6a5c7f2cd4a660fcf3fe494a50becfbf7923da7e`.
+Install over 1.3.0 or 1.3.1 without uninstalling.
