@@ -44,12 +44,22 @@ Device checks (require Android hardware/emulator with a documents provider):
   documents should remain responsive and show an empty/recovery state.
 - Verify original MediaStore video/audio lists and playback still work.
 
-### Build attempt in this change
+### Verified build
 
-Local `bash gradlew :app:testDebugUnitTest :app:assembleDebug :app:lintDebug`
-could not start: Java is not installed, and no Android SDK was found on this Mac.
-GitHub Actions successfully configured Java 21 and Android command-line tools,
-but `sdkmanager 'platforms;android-37'` failed with “Failed to find package”.
-The existing upstream project targets/compiles SDK 37; those settings were not
-changed. Consequently Android compilation, unit tests and lint have not run,
-and no APK is available. A device verification pass is also still required.
+Build commit `ee6443133a5c0f07ffc2b9a28bfdf45813823a2e` passed GitHub Actions:
+https://github.com/firstel/OmegaPlayer/actions/runs/38795981656
+
+- Android compile/target SDK 36, minimum SDK 25.
+- AndroidX Core 1.18.0 and Hilt navigation Compose 1.3.0 avoid SDK 37-only dependencies.
+- KSP 2.3.6 aligns with the Android Gradle Plugin 9 build.
+- Debug APK assembly passed; all four unit tests passed.
+- Lint completed with 0 errors, 63 warnings and 3 hints.
+- Downloaded APK passed Android apksigner verification (v2 signature) and ZIP integrity checks.
+
+The installable preview is a debug-signed build named **OmegaPlayer SD**, version
+1.2.1-sdcard, with application ID `com.arslandaim.omegaplayer.sdcard`. It installs
+alongside the original app without replacing its data. It is a universal APK.
+Copy/download the APK to the Android device, open it, and permit installation
+from that browser/file manager when Android asks. Open OmegaPlayer SD, tap
+SD card folders, and choose the desired media folder on the SD card.
+Physical AYN Thor playback and SD-card reboot/removal checks still require the device.
