@@ -13,12 +13,12 @@ plugins {
 
 android {
     namespace = "com.arslandaim.omegaplayer"
-    compileSdk = 37
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.arslandaim.omegaplayer"
         minSdk = 25
-        targetSdk = 37
+        targetSdk = 36
         versionCode = 6
         versionName = "1.2.1"
 
