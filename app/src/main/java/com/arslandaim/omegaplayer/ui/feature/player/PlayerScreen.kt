@@ -423,6 +423,12 @@ fun PlayerScreen(
                 }
         )
 
+        Box(Modifier.align(Alignment.CenterEnd).padding(16.dp)
+            .then(if (isControlsVisible && !isLocked) Modifier else Modifier.size(0.dp))
+            .background(Color.Black.copy(alpha = 0.65f), RoundedCornerShape(20.dp))) {
+            SecondScreenControlsButton(mediaController, isLocked)
+        }
+
         // Lock Icon HUD
         if (isControlsVisible || isLocked) {
             Box(

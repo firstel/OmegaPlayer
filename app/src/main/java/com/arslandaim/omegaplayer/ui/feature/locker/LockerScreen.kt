@@ -212,96 +212,81 @@ fun LockerSetupScreen(
     bottomPadding: androidx.compose.ui.unit.Dp = 0.dp
 ) {
     var pin by remember { mutableStateOf("") }
+    var confirmation by remember { mutableStateOf("") }
     var question by remember { mutableStateOf("") }
     var answer by remember { mutableStateOf("") }
-    val scope = rememberCoroutineScope()
-    val scrollState = rememberScrollState()
+    var recoveryStep by remember { mutableStateOf(false) }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .imePadding()
-            .wrapContentWidth(Alignment.CenterHorizontally)
-            .widthIn(max = 600.dp)
-            .verticalScroll(scrollState)
-            .padding(horizontal = 24.dp)
-            .padding(top = 24.dp, bottom = 24.dp + bottomPadding)
-            .statusBarsPadding(),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = stringResource(R.string.setup_pin_title),
-            style = MaterialTheme.typography.headlineLarge.copy(
-                fontWeight = FontWeight.ExtraBold,
-                brush = Brush.linearGradient(
-                    colors = listOf(
-                        MaterialTheme.colorScheme.error,
-                        MaterialTheme.colorScheme.primary,
-                        MaterialTheme.colorScheme.secondary
-                    )
-                )
-            )
-        )
-        Text(
-            stringResource(R.string.setup_pin_sub),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        
-        Spacer(modifier = Modifier.height(20.dp))
-        
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
-        ) {
-            Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                OutlinedTextField(
-                    value = pin,
-                    onValueChange = { if (it.length <= 4 && it.all(Char::isDigit)) pin = it },
-                    label = { Text(stringResource(R.string.pin_label)) },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-                    visualTransformation = PasswordVisualTransformation(),
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
-                )
-                
-                OutlinedTextField(
-                    value = question,
-                    onValueChange = { question = it },
-                    label = { Text(stringResource(R.string.security_question_title)) },
-                    placeholder = { Text(stringResource(R.string.security_question_sub)) },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
-                )
-                
-                OutlinedTextField(
-                    value = answer,
-                    onValueChange = { answer = it },
-                    label = { Text(stringResource(R.string.your_answer_label)) },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
-                )
+    BoxWithConstraints(Modifier.fillMaxSize().imePadding().padding(bottom = bottomPadding)) {
+        val wide = maxWidth >= 600.dp && maxWidth > maxHeight
+        val introduction: @Composable () -> Unit = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("Create private vault", style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold)
+                Text(if (recoveryStep) "Step 2 of 2 · Recovery" else "Step 1 of 2 · PIN",
+                    color = MaterialTheme.colorScheme.primary)
+                Text(stringResource(R.string.vault_storage_notice),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
-        
-        Spacer(modifier = Modifier.height(20.dp))
-
-        Button(
-            onClick = {
-                if (pin.length == 4 && question.isNotBlank() && answer.isNotBlank()) {
-                    viewModel.saveSettings(LockerSettings(pin = pin, securityQuestion = question, securityAnswer = answer))
+        val form: @Composable () -> Unit = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(stringResource(if (recoveryStep) R.string.vault_setup_recovery else R.string.vault_setup_pin),
+                    style = MaterialTheme.typography.titleMedium)
+                if (!recoveryStep) {
+                    OutlinedTextField(value = pin,
+                        onValueChange = { if (it.length <= 4 && it.all(Char::isDigit)) pin = it },
+                        label = { Text(stringResource(R.string.pin_label)) },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                        visualTransformation = PasswordVisualTransformation(),
+                        modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = confirmation,
+                        onValueChange = { if (it.length <= 4 && it.all(Char::isDigit)) confirmation = it },
+                        label = { Text("Confirm PIN") }, singleLine = true,
+                        isError = confirmation.length == 4 && confirmation != pin,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                        visualTransformation = PasswordVisualTransformation(),
+                        modifier = Modifier.fillMaxWidth())
+                } else {
+                    OutlinedTextField(value = question, onValueChange = { question = it },
+                        label = { Text(stringResource(R.string.security_question_title)) },
+                        singleLine = true, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = answer, onValueChange = { answer = it },
+                        label = { Text(stringResource(R.string.your_answer_label)) },
+                        singleLine = true, visualTransformation = PasswordVisualTransformation(),
+                        modifier = Modifier.fillMaxWidth())
                 }
-            },
-            modifier = Modifier.fillMaxWidth().height(56.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
-            )
-        ) {
-            Text(stringResource(R.string.setup_pin_title), fontWeight = FontWeight.Bold)
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    if (recoveryStep) TextButton(onClick = { recoveryStep = false }) { Text("Back") }
+                    Button(onClick = {
+                        if (!recoveryStep) recoveryStep = true
+                        else viewModel.saveSettings(LockerSettings(pin = pin,
+                            securityQuestion = question.trim(), securityAnswer = answer.trim()))
+                    }, enabled = if (recoveryStep) question.isNotBlank() && answer.isNotBlank()
+                        else pin.length == 4 && pin == confirmation,
+                        modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
+                        Text(stringResource(if (recoveryStep) R.string.vault_setup_create else R.string.vault_setup_next))
+                    }
+                }
+            }
+        }
+        if (wide) {
+            Row(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
+                horizontalArrangement = Arrangement.spacedBy(32.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.weight(1f)) { introduction() }
+                Box(Modifier.weight(1f).widthIn(max = 480.dp)) { form() }
+            }
+        } else {
+            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+                .wrapContentWidth(Alignment.CenterHorizontally).widthIn(max = 480.dp).padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(24.dp)) {
+                introduction()
+                form()
+            }
         }
     }
 }

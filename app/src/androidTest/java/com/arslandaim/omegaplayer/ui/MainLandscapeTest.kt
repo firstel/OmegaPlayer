@@ -53,7 +53,16 @@ class MainLandscapeTest {
             screenshot("settings-landscape")
             compose.onNodeWithContentDescription("Locker", useUnmergedTree = true).performClick()
             compose.waitForIdle()
+            compose.onNodeWithText("Next: recovery").assertIsDisplayed().assertIsNotEnabled()
+            compose.onNodeWithText("4-digit PIN", substring = true).assertExists()
+            compose.onNodeWithText("Confirm PIN").performTextInput("1234")
+            // The first field label is localized; select the two editable PIN fields in order.
+            compose.onAllNodes(hasSetTextAction())[0].performTextInput("1234")
+            compose.onNodeWithText("Next: recovery").assertIsEnabled()
             screenshot("locker-setup-landscape")
+            compose.onNodeWithText("Next: recovery").performClick()
+            compose.onNodeWithText("Create vault").assertIsDisplayed().assertIsNotEnabled()
+            screenshot("locker-recovery-landscape")
         } finally { resolver.delete(uri, null, null) }
     }
 }

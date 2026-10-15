@@ -166,4 +166,14 @@
         <item quantity="one">%d folder</item>
         <item quantity="other">%d folders</item>
     </plurals>
+    <string name="second_screen_title">Playback controls</string>
+    <string name="second_screen_hint">Video stays on the main screen. Tap it to turn these controls off.</string>
+    <string name="second_screen_enable">Bottom-screen controls</string>
+    <string name="second_screen_disable">Turn off bottom controls</string>
+    <string name="second_screen_missing">No second screen is available. Enable the Thor’s bottom screen and try again.</string>
+    <string name="vault_storage_notice">Vault files are stored inside this app. Uninstalling the app or clearing its data deletes them. Keep a separate backup of important videos.</string>
+    <string name="vault_setup_next">Next: recovery</string>
+    <string name="vault_setup_create">Create vault</string>
+    <string name="vault_setup_pin">Choose a 4-digit PIN</string>
+    <string name="vault_setup_recovery">Set a recovery question</string>
 </resources>
