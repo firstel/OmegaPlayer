@@ -19,10 +19,12 @@ jobs:
           packages: platform-tools
           log-accepted-android-sdk-licenses: false
       - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: false
       - name: Install compile SDK
         run: sdkmanager 'platforms;android-36'
       - name: Unit tests, debug APK, and lint
-        run: bash gradlew :app:testDebugUnitTest :app:assembleDebug :app:lintDebug --stacktrace
+        run: bash gradlew :app:assembleDebugAndroidTest :app:testDebugUnitTest :app:assembleDebug :app:lintDebug --stacktrace
       - name: Enable emulator acceleration
         run: sudo chmod 666 /dev/kvm
       - name: Landscape and portrait UI checks
