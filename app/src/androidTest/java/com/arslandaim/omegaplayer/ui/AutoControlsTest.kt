@@ -22,6 +22,7 @@ class AutoControlsTest {
         lateinit var surface: Surface
         lateinit var display: android.hardware.display.VirtualDisplay
         lateinit var player: ExoPlayer
+        val mounted = mutableStateOf(true)
         val uri = mutableStateOf("content://test/first.mp4")
         compose.runOnIdle {
             texture = SurfaceTexture(0).apply { setDefaultBufferSize(800, 600) }
@@ -32,7 +33,7 @@ class AutoControlsTest {
             player = ExoPlayer.Builder(context).build()
         }
         try {
-            compose.setContent { SecondScreenControlsButton(player, false, uri.value, {}, {}) }
+            compose.setContent { if (mounted.value) SecondScreenControlsButton(player, false, uri.value, {}, {}) }
             compose.waitUntil(5_000) {
                 compose.onAllNodesWithText("Turn off bottom controls").fetchSemanticsNodes().isNotEmpty()
             }
@@ -43,7 +44,8 @@ class AutoControlsTest {
                 compose.onAllNodesWithText("Turn off bottom controls").fetchSemanticsNodes().isNotEmpty()
             }
         } finally {
-            compose.setContent { }
+            compose.runOnIdle { mounted.value = false }
+            compose.waitForIdle()
             compose.runOnIdle { player.release(); display.release(); surface.release(); texture.release() }
         }
     }
