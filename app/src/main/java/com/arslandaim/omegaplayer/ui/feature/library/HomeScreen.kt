@@ -96,6 +96,7 @@ fun HomeScreen(
     val scope = rememberCoroutineScope()
     
     var selectedTab by rememberSaveable { mutableStateOf(initialTab ?: MediaTab.VIDEOS) }
+    var showDocumentFolders by rememberSaveable { mutableStateOf(false) }
     var isGridView by rememberSaveable { mutableStateOf(false) }
 
     val pagerState = rememberPagerState(
@@ -475,6 +476,14 @@ fun HomeScreen(
         }, onCreatePlaylist = { name -> audioViewModel.createPlaylist(name) })
     }
 
+    if (showDocumentFolders && isFocused) {
+        com.arslandaim.omegaplayer.ui.feature.folders.DocumentFolderBrowser(
+            onDismiss = { showDocumentFolders = false },
+            onVideoClick = onVideoClick,
+            onAudioClick = onAudioClick
+        )
+    }
+
     Scaffold(
         topBar = {
             Column(modifier = Modifier.background(MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)).statusBarsPadding()) {
@@ -498,6 +507,11 @@ fun HomeScreen(
                     },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
                 )
+                TextButton(onClick = { showDocumentFolders = true }) {
+                    Icon(Icons.Default.FolderOpen, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("SD card folders")
+                }
                 if (currentSelectedFolder == null && selectedPlaylistForDetails == null) {
                     HomeDashboard(selectedTab = selectedTab, storageStats = storageStats, onTabSelected = { tab -> selectedTab = tab })
                 }
