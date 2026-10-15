@@ -5,9 +5,6 @@ import android.net.Uri
 import android.provider.DocumentsContract
 import android.provider.MediaStore
 import com.arslandaim.omegaplayer.data.VideoModel
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.ensureActive
 import java.nio.ByteBuffer
 import java.security.MessageDigest
 

@@ -74,9 +74,11 @@ class MediaRepositoryImpl @Inject constructor(
             }
         }
         preferences.registerOnSharedPreferenceChangeListener(listener)
-        trySend(Resource.Loading)
-        trySend(fetchVideos())
-        awaitClose {
+        try {
+            trySend(Resource.Loading)
+            trySend(fetchVideos())
+            awaitClose { }
+        } finally {
             context.contentResolver.unregisterContentObserver(observer)
             preferences.unregisterOnSharedPreferenceChangeListener(listener)
         }
