@@ -153,3 +153,34 @@ form and action fit before scrolling. Lint: 0 errors, 67 warnings, 3 hints.
 The release APK passed v2/v3 signature verification and 16 KB ZIP alignment.
 SHA-256: `989c6bf41ec3c55492e30cef6a5c7f2cd4a660fcf3fe494a50becfbf7923da7e`.
 Install over 1.3.0 or 1.3.1 without uninstalling.
+
+### Complete transport controls preview 1.4.1
+
+The bottom presentation now uses explicit transport buttons rather than the
+standard controller's responsive button layout: −10 sec, Play/Pause, +10 sec,
+Stop, Mute/Unmute, speed cycling from 0.5× to 2×, and Close. It also shows
+elapsed/total time and a draggable seek bar. Seeking clamps to the media bounds;
+Stop pauses, rewinds and stops, retaining the selected item for Play to restart.
+The presentation removes its player listener and progress callbacks on stop.
+Close cancels the panel and updates the top-screen toggle state. Short displays
+have a scroll fallback.
+
+Video items now carry a title, explicit movie media type and request URI across
+the MediaSession boundary. Previously, numeric content URIs lacked extensions
+and the mini-player guessed audio, displaying Unknown Track/Unknown Artist.
+The video mini-player now receives correct classification, title and URI;
+resume/history lookup also uses the preserved URI. No media files are created,
+moved or deleted by this fix.
+
+Verified source: `d0b5491cf926712b838ea909a504565d7ae63634`.
+Build: https://github.com/firstel/OmegaPlayer/actions/runs/38815659615
+Release: https://github.com/firstel/OmegaPlayer/releases/tag/sdcard-preview-5
+
+APK assembly, 9 unit tests and 8 Android tests passed. Tests verify video title,
+type and URI survive MediaItem serialization, while audio remains classified
+as audio. The virtual-display test activates the explicit controls and checks
+10-second seek targets and boundary clamping, mute/restoration, speed change,
+Stop/reset and Close/detachment. Existing layout and setup checks also passed.
+Lint: 0 errors, 68 warnings, 3 hints. Signed APK v2/v3 signatures and 16 KB ZIP
+alignment verified with the retained preview signing key.
+SHA-256: `43be2fd4b8782a2e515e1ecec86646e23579f4f01d0ea8b71b9feb2f863ebb83`.
