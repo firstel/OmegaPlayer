@@ -141,7 +141,7 @@ internal class PlaybackControlsPresentation(
         button(row(), R.id.bottom_close, R.string.bottom_close) { cancel() }
         val scroll = android.widget.ScrollView(context).apply {
             isFillViewport = true
-            addView(panel, android.widget.ScrollView.LayoutParams(-1, -1))
+            addView(panel, android.widget.FrameLayout.LayoutParams(-1, -1))
         }
         setContentView(scroll)
         refresh()
