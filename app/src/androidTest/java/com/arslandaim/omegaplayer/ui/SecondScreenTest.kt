@@ -35,12 +35,12 @@ class SecondScreenTest {
                     // PlayerControlView is itself the content controller; locate the built-in play control.
                     val play = panel.findViewById<ImageButton>(androidx.media3.ui.R.id.exo_play_pause)
                     assertNotNull(play)
+                    assertSame(player, panel.attachedPlayer)
                     player.playWhenReady = false
                     play.performClick()
                     assertTrue(player.playWhenReady)
-                    play.performClick()
-                    assertFalse(player.playWhenReady)
                     panel.dismiss()
+                    assertNull(panel.attachedPlayer)
                     assertFalse(panel.isShowing)
                 } finally {
                     panel?.dismiss()

@@ -34,6 +34,7 @@ internal class PlaybackControlsPresentation(
     private val playback: Player
 ) : Presentation(activity, display, android.R.style.Theme_Material_NoActionBar) {
     private var controls: PlayerControlView? = null
+    internal val attachedPlayer: Player? get() = controls?.player
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
