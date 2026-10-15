@@ -279,6 +279,8 @@ fun MainScreen(
 ) {
     val pagerState = rememberPagerState(pageCount = { 3 })
     val scope = rememberCoroutineScope()
+    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+    val useRail = configuration.screenWidthDp >= 600 && configuration.screenHeightDp < 600
 
     LaunchedEffect(initialTab) {
         if (initialTab != null) {
@@ -311,7 +313,7 @@ fun MainScreen(
                         navController.navigate(Screen.Player.createRoute(encodedUri))
                     }
                 )
-                ModernNavigationBar(
+                if (!useRail) ModernNavigationBar(
                     selectedTab = pagerState.currentPage,
                     onTabSelected = { page ->
                         scope.launch { pagerState.animateScrollToPage(page) }
@@ -320,9 +322,13 @@ fun MainScreen(
             }
         }
     ) { padding ->
+        Row(Modifier.fillMaxSize()) {
+            if (useRail) LandscapeNavigationRail(pagerState.currentPage) { page ->
+                scope.launch { pagerState.animateScrollToPage(page) }
+            }
         HorizontalPager(
             state = pagerState,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.weight(1f).fillMaxHeight(),
             beyondViewportPageCount = 1
         ) { page ->
             when (page) {
@@ -366,6 +372,7 @@ fun MainScreen(
                     isFocused = pagerState.currentPage == 2
                 )
             }
+        }
         }
     }
 }
@@ -478,5 +485,23 @@ fun ModernNavigationBar(
                 }
             }
         }
+    }
+}
+
+
+@Composable
+internal fun LandscapeNavigationRail(selectedTab: Int, onTabSelected: (Int) -> Unit) {
+    NavigationRail(modifier = Modifier.fillMaxHeight().width(80.dp),
+        containerColor = MaterialTheme.colorScheme.surface) {
+        Spacer(Modifier.weight(1f))
+        listOf(
+            Triple(stringResource(R.string.nav_home), Icons.Default.Home, 0),
+            Triple(stringResource(R.string.nav_locker), Icons.Default.Lock, 1),
+            Triple(stringResource(R.string.nav_settings), Icons.Default.Settings, 2)
+        ).forEach { (label, icon, index) ->
+            NavigationRailItem(selected = selectedTab == index, onClick = { onTabSelected(index) },
+                icon = { Icon(icon, label) }, label = { Text(label) }, alwaysShowLabel = true)
+        }
+        Spacer(Modifier.weight(1f))
     }
 }

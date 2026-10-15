@@ -6,6 +6,8 @@
 
 package com.arslandaim.omegaplayer.ui.feature.player
 
+import androidx.compose.foundation.verticalScroll
+
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -697,20 +699,14 @@ fun AudioPlayerScreen(
                 }
             } else {
                 val player = controller!!
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(padding)
-                        .padding(horizontal = 24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Spacer(modifier = Modifier.height(12.dp))
-
+                BoxWithConstraints(Modifier.fillMaxSize().padding(padding).padding(horizontal = 24.dp)) {
+                    val landscape = maxWidth >= 480.dp && maxWidth > maxHeight
+                    val artSize = if (landscape) (maxHeight - 32.dp).coerceIn(120.dp, 280.dp) else 280.dp
+                    val artwork: @Composable () -> Unit = {
                     // Album Art with Breathing Animation
                     Box(
                         modifier = Modifier
-                            .size(320.dp)
+                            .size(artSize)
                             .graphicsLayer {
                                 scaleX = artScale
                                 scaleY = artScale
@@ -729,6 +725,10 @@ fun AudioPlayerScreen(
                         )
                     }
 
+                    }
+                    val controls: @Composable () -> Unit = {
+                        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         // Audio Info
                         Text(
@@ -752,7 +752,7 @@ fun AudioPlayerScreen(
                     // Waveform Visualizer
                     WaveformVisualizer(
                         isPlaying = isPlaying,
-                        modifier = Modifier.padding(vertical = 24.dp),
+                        modifier = Modifier.padding(vertical = if (landscape) 4.dp else 20.dp),
                         color = MaterialTheme.colorScheme.primary
                     )
 
@@ -792,7 +792,7 @@ fun AudioPlayerScreen(
 
                     // Controls
                     Row(
-                        modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp),
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
                         horizontalArrangement = Arrangement.SpaceEvenly,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -825,7 +825,7 @@ fun AudioPlayerScreen(
                         
                         FilledIconButton(
                             onClick = { if (isPlaying) player.pause() else player.play() },
-                            modifier = Modifier.size(84.dp),
+                            modifier = Modifier.size(if (landscape) 64.dp else 84.dp),
                             shape = CircleShape,
                             colors = IconButtonDefaults.filledIconButtonColors(
                                 containerColor = Color.White,
@@ -860,6 +860,20 @@ fun AudioPlayerScreen(
                             )
                         }
                     }
+                        }
+                    }
+                    if (landscape) {
+                        Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(32.dp)) {
+                            artwork()
+                            Column(Modifier.weight(1f).verticalScroll(androidx.compose.foundation.rememberScrollState()).padding(vertical = 12.dp)) { controls() }
+                        }
+                    } else {
+                        Column(Modifier.fillMaxSize().verticalScroll(androidx.compose.foundation.rememberScrollState()).padding(vertical = 12.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(24.dp)) { artwork(); controls() }
+                    }
+
                 }
             }
         }

@@ -126,156 +126,52 @@ fun LockerAuthScreen(
     onBack: () -> Unit,
     bottomPadding: androidx.compose.ui.unit.Dp = 0.dp
 ) {
-    BackHandler(onBack = onBack)
-    
     val context = LocalContext.current
     val activity = context as? FragmentActivity
     val scope = rememberCoroutineScope()
     var pinInput by remember { mutableStateOf("") }
-    val scrollState = rememberScrollState()
-    
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(scrollState)
-            .padding(horizontal = 24.dp)
-            .padding(top = 24.dp, bottom = 24.dp + bottomPadding),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-//        Icon(
-//            Icons.Default.Lock,
-//            contentDescription = null,
-//            tint = Color(0xFFFF6600),
-//            modifier = Modifier.size(64.dp)
-//        )
-//        Spacer(modifier = Modifier.height(24.dp))
-        Text(
-            stringResource(R.string.locker_title),
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.ExtraBold
-        )
-        Text(
-            stringResource(R.string.enter_pin_sub),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
-        )
-        
-        Spacer(modifier = Modifier.height(15.dp))
-        
-        // PIN Dots
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.padding(16.dp)
-        ) {
-            repeat(4) { index ->
-                val filled = index < pinInput.length
-                Box(
-                    modifier = Modifier
-                        .size(16.dp)
-                        .clip(CircleShape)
-                        .background(
-                            if (filled) MaterialTheme.colorScheme.primary 
-                            else MaterialTheme.colorScheme.surfaceVariant
-                        )
-                )
-            }
-        }
-        
-        Spacer(modifier = Modifier.height(32.dp))
-        
-        // Number Pad
-        Column(
-            modifier = Modifier.fillMaxWidth(0.8f),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            val buttons = listOf(
-                listOf("1", "2", "3"),
-                listOf("4", "5", "6"),
-                listOf("7", "8", "9"),
-                listOf("Back", "0", "OK")
-            )
-            
-            buttons.forEach { row ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    row.forEach { label ->
-                        NumButton(
-                            label = label,
-                            modifier = Modifier.weight(1f),
-                            onClick = {
-                                when (label) {
-                                    "Back" -> if (pinInput.isNotEmpty()) pinInput = pinInput.dropLast(1)
-                                    "OK" -> {
-                                        scope.launch {
-                                            val settings = viewModel.getSettings()
-                                            val hashedInput = SecurityUtils.hashString(pinInput)
-                                            if (settings?.pin == hashedInput) {
-                                                viewModel.unlock(true)
-                                            } else {
-                                                Toast.makeText(context, "Incorrect PIN", Toast.LENGTH_SHORT).show()
-                                                pinInput = ""
-                                            }
-                                        }
-                                    }
-                                    else -> if (pinInput.length < 4) {
-                                        pinInput += label
-                                        if (pinInput.length == 4) {
-                                            // Auto verify
-                                            scope.launch {
-                                                val settings = viewModel.getSettings()
-                                                val hashedInput = SecurityUtils.hashString(pinInput)
-                                                if (settings?.pin == hashedInput) {
-                                                    viewModel.unlock(true)
-                                                } else {
-                                                    Toast.makeText(context, "Incorrect PIN", Toast.LENGTH_SHORT).show()
-                                                    pinInput = ""
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        )
-                    }
+    var verifying by remember { mutableStateOf(false) }
+
+    fun verifyPin(submitted: String) {
+        if (verifying || submitted.length != 4) return
+        verifying = true
+        scope.launch {
+            try {
+                val settings = viewModel.getSettings()
+                if (settings?.pin == SecurityUtils.hashString(submitted)) viewModel.unlock(true)
+                else {
+                    Toast.makeText(context, "Incorrect PIN", Toast.LENGTH_SHORT).show()
+                    pinInput = ""
                 }
-            }
-        }
-        
-        Spacer(modifier = Modifier.height(32.dp))
-        
-        // Fingerprint Button instead of Cancel
-        FilledTonalIconButton(
-            onClick = {
-                scope.launch {
-                    val settings = viewModel.getSettings()
-                    if (settings?.isBiometricEnabled == true && activity != null) {
-                        authenticateBiometric(activity, {
-                            viewModel.unlock(true)
-                        }, { errorCode, error ->
-                            if (errorCode != BiometricPrompt.ERROR_USER_CANCELED && 
-                                errorCode != BiometricPrompt.ERROR_NEGATIVE_BUTTON) {
-                                Toast.makeText(context, "Authentication failed: $error", Toast.LENGTH_SHORT).show()
-                            }
-                        })
-                    } else {
-                        Toast.makeText(context, "Biometric unlock not enabled in Settings", Toast.LENGTH_SHORT).show()
-                    }
-                }
-            },
-            modifier = Modifier.size(64.dp),
-            shape = CircleShape
-        ) {
-            Icon(
-                Icons.Default.Fingerprint,
-                contentDescription = "Fingerprint Unlock",
-                modifier = Modifier.size(32.dp)
-            )
+            } finally { verifying = false }
         }
     }
+
+    LockerPinPanel(
+        pinLength = pinInput.length,
+        modifier = Modifier.statusBarsPadding().padding(bottom = bottomPadding),
+        onKey = { key ->
+            if (!verifying) when (key) {
+                "Back" -> pinInput = pinInput.dropLast(1)
+                "OK" -> verifyPin(pinInput)
+                else -> if (pinInput.length < 4) {
+                    pinInput += key
+                    if (pinInput.length == 4) verifyPin(pinInput)
+                }
+            }
+        },
+        onBiometric = {
+            scope.launch {
+                val settings = viewModel.getSettings()
+                if (settings?.isBiometricEnabled == true && activity != null) {
+                    authenticateBiometric(activity, { viewModel.unlock(true) }, { errorCode, error ->
+                        if (errorCode != BiometricPrompt.ERROR_USER_CANCELED && errorCode != BiometricPrompt.ERROR_NEGATIVE_BUTTON)
+                            Toast.makeText(context, "Authentication failed: $error", Toast.LENGTH_SHORT).show()
+                    })
+                } else Toast.makeText(context, "Biometric unlock not enabled in Settings", Toast.LENGTH_SHORT).show()
+            }
+        }
+    )
 }
 
 @Composable
@@ -291,10 +187,10 @@ fun NumButton(label: String, modifier: Modifier = Modifier, onClick: () -> Unit)
         Box(contentAlignment = Alignment.Center) {
             when (label) {
                 "Back" -> {
-                    Icon(Icons.AutoMirrored.Filled.Backspace, contentDescription = null)
+                    Icon(Icons.AutoMirrored.Filled.Backspace, contentDescription = "Delete last digit")
                 }
                 "OK" -> {
-                    Icon(Icons.Default.Check, contentDescription = null)
+                    Icon(Icons.Default.Check, contentDescription = "Unlock")
                 }
                 else -> {
                     Text(
@@ -324,6 +220,9 @@ fun LockerSetupScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .imePadding()
+            .wrapContentWidth(Alignment.CenterHorizontally)
+            .widthIn(max = 600.dp)
             .verticalScroll(scrollState)
             .padding(horizontal = 24.dp)
             .padding(top = 24.dp, bottom = 24.dp + bottomPadding)
@@ -349,7 +248,7 @@ fun LockerSetupScreen(
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         
-        Spacer(modifier = Modifier.height(48.dp))
+        Spacer(modifier = Modifier.height(20.dp))
         
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -359,8 +258,9 @@ fun LockerSetupScreen(
             Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 OutlinedTextField(
                     value = pin,
-                    onValueChange = { if (it.length <= 4) pin = it },
+                    onValueChange = { if (it.length <= 4 && it.all(Char::isDigit)) pin = it },
                     label = { Text(stringResource(R.string.pin_label)) },
+                    singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                     visualTransformation = PasswordVisualTransformation(),
                     modifier = Modifier.fillMaxWidth(),
@@ -386,7 +286,7 @@ fun LockerSetupScreen(
             }
         }
         
-        Spacer(modifier = Modifier.weight(1f))
+        Spacer(modifier = Modifier.height(20.dp))
 
         Button(
             onClick = {

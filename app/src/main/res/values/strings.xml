@@ -161,4 +161,9 @@
     <string name="unknown_title">Unknown Title</string>
     <string name="queue">Queue</string>
     <string name="next_track">Next Track</string>
+    <string name="library_folders_heading">Folders</string>
+    <plurals name="library_folder_count">
+        <item quantity="one">%d folder</item>
+        <item quantity="other">%d folders</item>
+    </plurals>
 </resources>

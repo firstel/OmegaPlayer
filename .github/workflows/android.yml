@@ -2,7 +2,6 @@ name: Android verification
 on:
   push:
     branches: [feature/sd-card-folder-browser]
-  pull_request:
   workflow_dispatch:
 permissions:
   contents: read
@@ -24,6 +23,18 @@ jobs:
         run: sdkmanager 'platforms;android-36'
       - name: Unit tests, debug APK, and lint
         run: bash gradlew :app:testDebugUnitTest :app:assembleDebug :app:lintDebug --stacktrace
+      - name: Enable emulator acceleration
+        run: sudo chmod 666 /dev/kvm
+      - name: Landscape and portrait UI checks
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
+          script: bash .github/scripts/check-layouts.sh
       - uses: actions/upload-artifact@v4
         if: always()
         with:

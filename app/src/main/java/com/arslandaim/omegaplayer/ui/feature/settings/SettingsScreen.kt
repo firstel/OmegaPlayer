@@ -144,6 +144,9 @@ fun SettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .imePadding()
+                .wrapContentWidth(Alignment.CenterHorizontally)
+                .widthIn(max = 840.dp)
                 .background(MaterialTheme.colorScheme.surface)
                 .verticalScroll(scrollState)
                 .padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp + bottomPadding),

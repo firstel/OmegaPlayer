@@ -540,9 +540,9 @@ fun HomeScreen(
                     IconButton(onClick = { isGridView = !isGridView }, modifier = Modifier.background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f), CircleShape)) { Icon(if (isGridView) Icons.Default.ViewList else Icons.Default.GridView, null, tint = MaterialTheme.colorScheme.primary) }
                 }
                 Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    val sectionLabel = if (currentSelectedFolder == null && selectedPlaylistForDetails == null) stringResource(R.string.no_folders_found).substringBefore(" ") else if (selectedPlaylistForDetails != null) stringResource(R.string.queue) else if (selectedTab == MediaTab.VIDEOS) stringResource(R.string.tab_videos) else stringResource(R.string.tab_audios)
+                    val sectionLabel = if (currentSelectedFolder == null && selectedPlaylistForDetails == null) stringResource(R.string.library_folders_heading) else if (selectedPlaylistForDetails != null) stringResource(R.string.queue) else if (selectedTab == MediaTab.VIDEOS) stringResource(R.string.tab_videos) else stringResource(R.string.tab_audios)
                     Text(text = sectionLabel, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface))
-                    if (currentSelectedFolder == null && selectedPlaylistForDetails == null) { Text(text = stringResource(R.string.items_count, currentFolders.size), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    if (currentSelectedFolder == null && selectedPlaylistForDetails == null) { Text(text = androidx.compose.ui.res.pluralStringResource(R.plurals.library_folder_count, currentFolders.size, currentFolders.size), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                 }
             }
         },
