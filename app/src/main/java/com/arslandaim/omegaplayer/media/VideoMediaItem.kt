@@ -28,6 +28,7 @@ internal fun MediaItem.isVideoItem(): Boolean {
 
 internal fun prepareVideoItem(player: androidx.media3.common.Player, item: MediaItem) {
     player.setPlaybackSpeed(1f)
+    player.volume = 1f
     player.setMediaItem(item)
     player.prepare()
 }

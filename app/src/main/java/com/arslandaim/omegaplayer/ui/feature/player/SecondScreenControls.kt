@@ -46,7 +46,7 @@ internal class PlaybackControlsPresentation(
     private lateinit var volumeLabel: TextView
     private lateinit var timeline: VideoThumbnailTimeline
     private var scrubbing = false
-    private var previousVolume = 1f
+    private val deviceVolume = DeviceMediaVolume(activity)
     private val ticker = object : Runnable {
         override fun run() { refresh(); handler.postDelayed(this, 250) }
     }
@@ -66,9 +66,9 @@ internal class PlaybackControlsPresentation(
         time.text = "${stamp(playback.currentPosition)} / ${stamp(duration)}"
         play.setText(if (playback.playWhenReady && playback.playbackState != Player.STATE_ENDED)
             R.string.bottom_pause else R.string.bottom_play)
-        mute.setText(if (playback.volume == 0f) R.string.bottom_unmute else R.string.bottom_mute)
+        mute.setText(if (deviceVolume.muted) R.string.bottom_unmute else R.string.bottom_mute)
         speed.text = context.getString(R.string.bottom_speed, playback.playbackParameters.speed)
-        volumeLabel.text = context.getString(R.string.bottom_volume_level, (playback.volume * 100).toInt())
+        volumeLabel.text = context.getString(R.string.bottom_volume_level, deviceVolume.percent)
         timeline.load(playback.currentMediaItem?.playbackUri(), duration)
     }
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -141,8 +141,8 @@ internal class PlaybackControlsPresentation(
             playback.pause(); playback.seekTo(0); playback.stop()
         }
         mute = button(options, R.id.bottom_mute, R.string.bottom_mute) {
-            if (playback.volume > 0f) { previousVolume = playback.volume; playback.volume = 0f }
-            else playback.volume = previousVolume
+            deviceVolume.toggleMute()
+            playback.volume = 1f
         }
         speed = button(options, R.id.bottom_speed, R.string.bottom_play) {
             val speeds = listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f)
@@ -150,14 +150,17 @@ internal class PlaybackControlsPresentation(
         }
         val volumeRow = row()
         button(volumeRow, R.id.bottom_volume_down, R.string.bottom_volume_down) {
-            playback.volume = (playback.volume - 0.1f).coerceAtLeast(0f)
+            deviceVolume.adjust(up = false)
+            playback.volume = 1f
         }
         volumeLabel = TextView(context).apply {
+            id = R.id.bottom_volume_level
             textSize = 14f; gravity = Gravity.CENTER; setTextColor(android.graphics.Color.WHITE)
         }
         volumeRow.addView(volumeLabel, LinearLayout.LayoutParams(0, -1, 1f))
         button(volumeRow, R.id.bottom_volume_up, R.string.bottom_volume_up) {
-            playback.volume = (playback.volume + 0.1f).coerceAtMost(1f)
+            deviceVolume.adjust(up = true)
+            playback.volume = 1f
         }
         button(row(), R.id.bottom_close, R.string.bottom_close) {
             onVideoClosing()

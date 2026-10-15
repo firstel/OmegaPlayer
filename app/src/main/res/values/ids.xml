@@ -9,4 +9,5 @@
     <item name="bottom_volume_down" type="id" />
     <item name="bottom_volume_up" type="id" />
     <item name="bottom_timeline" type="id" />
+    <item name="bottom_volume_level" type="id" />
 </resources>

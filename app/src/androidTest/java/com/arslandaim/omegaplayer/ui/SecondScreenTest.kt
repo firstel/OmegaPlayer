@@ -37,6 +37,9 @@ class SecondScreenTest {
     @Test fun secondDisplayControlsSharePlayerAndDetachOnDismiss() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             scenario.onActivity { activity ->
+                org.junit.Assume.assumeFalse(activity.getSystemService(android.media.AudioManager::class.java).isVolumeFixed)
+                val deviceVolume = com.arslandaim.omegaplayer.ui.feature.player.DeviceMediaVolume(activity)
+                val originalVolume = deviceVolume.fraction
                 val texture = SurfaceTexture(0).apply { setDefaultBufferSize(800, 600) }
                 val surface = Surface(texture)
                 val manager = activity.getSystemService(DisplayManager::class.java)
@@ -56,7 +59,11 @@ class SecondScreenTest {
                     var closed = false
                     panel = PlaybackControlsPresentation(activity, display.display, player,
                         onVideoClosed = { closed = true })
+                    deviceVolume.setFraction(0f)
                     panel.show()
+                    assertEquals(0, deviceVolume.percent)
+                    assertEquals("Media volume 0%", panel.findViewById<android.widget.TextView>(R.id.bottom_volume_level).text.toString())
+                    deviceVolume.setFraction(1f)
                     val play = panel.findViewById<Button>(R.id.bottom_play_pause)
                     assertNotNull(play)
                     assertSame(player, panel.attachedPlayer)
@@ -72,15 +79,15 @@ class SecondScreenTest {
                     position = 58_000L
                     forward.performClick(); assertEquals(60_000L, position)
                     panel.findViewById<Button>(R.id.bottom_mute).performClick()
-                    assertEquals(0f, player.volume, 0.001f)
+                    assertEquals(0f, deviceVolume.fraction, 0.001f)
                     panel.findViewById<Button>(R.id.bottom_mute).performClick()
-                    assertEquals(1f, player.volume, 0.001f)
+                    assertEquals(1f, deviceVolume.fraction, 0.001f)
                     panel.findViewById<Button>(R.id.bottom_volume_down).performClick()
-                    assertEquals(0.9f, player.volume, 0.001f)
+                    assertEquals(deviceVolume.maximum - 1, deviceVolume.level)
                     panel.findViewById<Button>(R.id.bottom_volume_up).performClick()
-                    assertEquals(1f, player.volume, 0.001f)
+                    assertEquals(1f, deviceVolume.fraction, 0.001f)
                     panel.findViewById<Button>(R.id.bottom_volume_up).performClick()
-                    assertEquals(1f, player.volume, 0.001f)
+                    assertEquals(1f, deviceVolume.fraction, 0.001f)
                     panel.findViewById<Button>(R.id.bottom_speed).performClick()
                     assertEquals(1.25f, player.playbackParameters.speed, 0.001f)
                     panel.findViewById<Button>(R.id.bottom_stop).performClick()
@@ -88,9 +95,11 @@ class SecondScreenTest {
                     assertFalse(player.playWhenReady)
                     assertEquals(androidx.media3.common.Player.STATE_IDLE, player.playbackState)
                     player.setPlaybackSpeed(2f)
+                    player.volume = 0.2f
                     prepareVideoItem(player, videoMediaItem(android.net.Uri.parse("file:///test-next.mp4"),
                         "Next video", "video/mp4"))
                     assertEquals(1f, player.playbackParameters.speed, 0.001f)
+                    assertEquals(1f, player.volume, 0.001f)
                     panel.findViewById<Button>(R.id.bottom_close).performClick()
                     assertTrue(closed)
                     assertEquals(0, player.mediaItemCount)
@@ -99,6 +108,7 @@ class SecondScreenTest {
                     assertFalse(panel.isShowing)
                 } finally {
                     panel?.dismiss()
+                    deviceVolume.setFraction(originalVolume)
                     player.release()
                     display.release()
                     surface.release()

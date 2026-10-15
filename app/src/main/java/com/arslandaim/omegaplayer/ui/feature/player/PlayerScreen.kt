@@ -116,7 +116,8 @@ fun PlayerScreen(
     
 
     // MX Player States (Local to this session)
-    var volume by remember { mutableFloatStateOf(0.5f) }
+    val deviceVolume = remember(context) { DeviceMediaVolume(context) }
+    var volume by remember { mutableFloatStateOf(deviceVolume.fraction) }
     var brightness by remember { mutableFloatStateOf(0.5f) }
     var isControlsVisible by remember { mutableStateOf(true) }
     var isLocked by remember { mutableStateOf(false) }
@@ -299,6 +300,7 @@ fun PlayerScreen(
             mediaController?.let {
                 currentPosition = it.currentPosition
                 duration = it.duration
+                volume = deviceVolume.fraction
             }
             delay(500.milliseconds)
         }
@@ -425,7 +427,8 @@ fun PlayerScreen(
                                         if (abs(volume - oldVolume) > 0.05f) {
                                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                         }
-                                        mediaController?.volume = volume
+                                        deviceVolume.setFraction(volume)
+                                        mediaController?.volume = 1f
                                         isVolumeVisible = true
                                     }
                                 }
