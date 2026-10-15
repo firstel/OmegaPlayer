@@ -26,6 +26,10 @@ android {
     }
 
     buildTypes {
+        debug {
+            applicationIdSuffix = ".sdcard"
+            versionNameSuffix = "-sdcard"
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
