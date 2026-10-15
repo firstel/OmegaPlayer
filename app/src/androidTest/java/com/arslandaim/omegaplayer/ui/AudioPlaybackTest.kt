@@ -5,7 +5,7 @@ import androidx.media3.common.C
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.test.core.app.ActivityScenario
 import androidx.test.platform.app.InstrumentationRegistry
-import com.arslandaim.omegaplayer.MainActivity
+import androidx.activity.ComponentActivity
 import com.arslandaim.omegaplayer.media.prepareVideoItem
 import com.arslandaim.omegaplayer.media.videoMediaItem
 import com.arslandaim.omegaplayer.service.createPlaybackPlayer
@@ -20,7 +20,7 @@ class AudioPlaybackTest {
         val file = File(instrumentation.targetContext.cacheDir, "audio-playback-check.mp4")
         instrumentation.context.assets.open("audio-test.mp4").use { input -> file.outputStream().use { input.copyTo(it) } }
         try {
-            ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            ActivityScenario.launch(ComponentActivity::class.java).use { scenario ->
                 lateinit var player: ExoPlayer
                 scenario.onActivity {
                     player = createPlaybackPlayer(it)
