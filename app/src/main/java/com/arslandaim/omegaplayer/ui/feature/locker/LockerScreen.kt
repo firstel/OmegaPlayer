@@ -216,6 +216,13 @@ fun LockerSetupScreen(
     var question by remember { mutableStateOf("") }
     var answer by remember { mutableStateOf("") }
     var recoveryStep by remember { mutableStateOf(false) }
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+    val keyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+    BackHandler(enabled = recoveryStep) {
+        focusManager.clearFocus()
+        keyboard?.hide()
+        recoveryStep = false
+    }
 
     BoxWithConstraints(Modifier.fillMaxSize().imePadding().padding(bottom = bottomPadding)) {
         val wide = maxWidth >= 600.dp && maxWidth > maxHeight
@@ -260,8 +267,14 @@ fun LockerSetupScreen(
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.CenterVertically) {
-                    if (recoveryStep) TextButton(onClick = { recoveryStep = false }) { Text("Back") }
+                    if (recoveryStep) TextButton(onClick = {
+                        focusManager.clearFocus()
+                        keyboard?.hide()
+                        recoveryStep = false
+                    }) { Text("Back") }
                     Button(onClick = {
+                        focusManager.clearFocus()
+                        keyboard?.hide()
                         if (!recoveryStep) recoveryStep = true
                         else viewModel.saveSettings(LockerSettings(pin = pin,
                             securityQuestion = question.trim(), securityAnswer = answer.trim()))
