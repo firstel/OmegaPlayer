@@ -31,7 +31,9 @@ import androidx.compose.ui.res.stringResource
 internal class PlaybackControlsPresentation(
     activity: Activity,
     display: Display,
-    private val playback: Player
+    private val playback: Player,
+    private val onVideoClosing: () -> Unit = {},
+    private val onVideoClosed: () -> Unit = {}
 ) : Presentation(activity, display, android.R.style.Theme_Material_NoActionBar) {
     private var attached = false
     internal val attachedPlayer: Player? get() = if (attached) playback else null
@@ -138,7 +140,14 @@ internal class PlaybackControlsPresentation(
             val speeds = listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f)
             playback.setPlaybackSpeed(speeds.firstOrNull { it > playback.playbackParameters.speed + 0.01f } ?: speeds.first())
         }
-        button(row(), R.id.bottom_close, R.string.bottom_close) { cancel() }
+        button(row(), R.id.bottom_close, R.string.bottom_close) {
+            onVideoClosing()
+            playback.pause()
+            playback.stop()
+            playback.clearMediaItems()
+            dismiss()
+            onVideoClosed()
+        }
         val scroll = android.widget.ScrollView(context).apply {
             isFillViewport = true
             addView(panel, android.widget.FrameLayout.LayoutParams(-1, -1))
@@ -166,11 +175,16 @@ internal fun skipPosition(position: Long, duration: Long, offset: Long): Long =
     }
 
 @Composable
-internal fun SecondScreenControlsButton(player: Player?, locked: Boolean) {
+internal fun SecondScreenControlsButton(
+    player: Player?, locked: Boolean, videoUri: String,
+    onVideoClosing: () -> Unit, onVideoClosed: () -> Unit
+) {
     val context = LocalContext.current
     val activity = context as? Activity ?: return
     val lifecycle = LocalLifecycleOwner.current.lifecycle
-    var enabled by rememberSaveable { mutableStateOf(false) }
+    var enabled by rememberSaveable(videoUri) { mutableStateOf(true) }
+    val currentClosing by rememberUpdatedState(onVideoClosing)
+    val currentClosed by rememberUpdatedState(onVideoClosed)
     var active by remember { mutableStateOf(false) }
     var revision by remember { mutableIntStateOf(0) }
     val manager = remember(context) { context.getSystemService(DisplayManager::class.java) }
@@ -191,7 +205,8 @@ internal fun SecondScreenControlsButton(player: Player?, locked: Boolean) {
             val display = manager.getDisplays(DisplayManager.DISPLAY_CATEGORY_PRESENTATION)
                 .firstOrNull { it.displayId != activity.window.decorView.display?.displayId } ?: return
             try {
-                presentation = PlaybackControlsPresentation(activity, display, player).also { panel ->
+                presentation = PlaybackControlsPresentation(activity, display, player,
+                    onVideoClosing = { currentClosing() }, onVideoClosed = { currentClosed() }).also { panel ->
                     panel.setOnCancelListener { enabled = false }
                     panel.setOnDismissListener { active = false }
                     panel.show()
@@ -211,10 +226,11 @@ internal fun SecondScreenControlsButton(player: Player?, locked: Boolean) {
         onDispose { lifecycle.removeObserver(observer); hide() }
     }
     if (!locked) TextButton(onClick = {
-        if (!enabled && manager.getDisplays(DisplayManager.DISPLAY_CATEGORY_PRESENTATION)
+        if (manager.getDisplays(DisplayManager.DISPLAY_CATEGORY_PRESENTATION)
                 .none { it.displayId != activity.window.decorView.display?.displayId }) {
             Toast.makeText(context, R.string.second_screen_missing, Toast.LENGTH_LONG).show()
-        } else enabled = !active
+        } else if (active) enabled = false
+        else { enabled = true; revision++ }
     }) {
         Text(stringResource(if (active) R.string.second_screen_disable else R.string.second_screen_enable),
             color = androidx.compose.ui.graphics.Color.White)

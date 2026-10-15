@@ -53,7 +53,9 @@ class SecondScreenTest {
                 var panel: PlaybackControlsPresentation? = null
                 try {
                     assertNotEquals(activity.window.decorView.display.displayId, display.display.displayId)
-                    panel = PlaybackControlsPresentation(activity, display.display, player)
+                    var closed = false
+                    panel = PlaybackControlsPresentation(activity, display.display, player,
+                        onVideoClosed = { closed = true })
                     panel.show()
                     val play = panel.findViewById<Button>(R.id.bottom_play_pause)
                     assertNotNull(play)
@@ -79,7 +81,14 @@ class SecondScreenTest {
                     assertEquals(0L, position)
                     assertFalse(player.playWhenReady)
                     assertEquals(androidx.media3.common.Player.STATE_IDLE, player.playbackState)
+                    player.setPlaybackSpeed(2f)
+                    prepareVideoItem(player, videoMediaItem(android.net.Uri.parse("file:///test-next.mp4"),
+                        "Next video", "video/mp4"))
+                    assertEquals(1f, player.playbackParameters.speed, 0.001f)
                     panel.findViewById<Button>(R.id.bottom_close).performClick()
+                    assertTrue(closed)
+                    assertEquals(0, player.mediaItemCount)
+                    assertFalse(player.playWhenReady)
                     assertNull(panel.attachedPlayer)
                     assertFalse(panel.isShowing)
                 } finally {

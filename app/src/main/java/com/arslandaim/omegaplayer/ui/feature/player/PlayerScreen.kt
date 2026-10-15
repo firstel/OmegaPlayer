@@ -11,6 +11,7 @@ import android.content.Context
 import android.content.pm.ActivityInfo
 import android.net.Uri
 import com.arslandaim.omegaplayer.media.videoMediaItem
+import com.arslandaim.omegaplayer.media.prepareVideoItem
 import com.arslandaim.omegaplayer.media.playbackUri
 import android.util.Log
 import android.view.LayoutInflater
@@ -152,6 +153,7 @@ fun PlayerScreen(
         val currentUri = player.currentMediaItem?.playbackUri()
         if (currentUri != newUri) {
             playbackError = null
+            playbackSpeed = 1f
             player.stop()
             player.clearMediaItems()
             val details = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
@@ -163,8 +165,7 @@ fun PlayerScreen(
                 }.getOrNull() ?: newUri.lastPathSegment?.substringAfterLast('/') ?: "Video"
                 name to runCatching { context.contentResolver.getType(newUri) }.getOrNull()
             }
-            player.setMediaItem(videoMediaItem(newUri, details.first, details.second))
-            player.prepare()
+            prepareVideoItem(player, videoMediaItem(newUri, details.first, details.second))
         }
         player.playWhenReady = true
     }
@@ -437,7 +438,8 @@ fun PlayerScreen(
         Box(Modifier.align(Alignment.CenterEnd).padding(16.dp)
             .then(if (isControlsVisible && !isLocked) Modifier else Modifier.size(0.dp))
             .background(Color.Black.copy(alpha = 0.65f), RoundedCornerShape(20.dp))) {
-            SecondScreenControlsButton(mediaController, isLocked)
+            SecondScreenControlsButton(mediaController, isLocked, videoUri,
+                onVideoClosing = { viewModel.savePlaybackProgress() }, onVideoClosed = onBack)
         }
 
         // Lock Icon HUD

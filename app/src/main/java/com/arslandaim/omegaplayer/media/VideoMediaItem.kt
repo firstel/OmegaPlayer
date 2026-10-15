@@ -25,3 +25,9 @@ internal fun MediaItem.isVideoItem(): Boolean {
     return listOf("mp4", "mkv", "webm", "avi", "mov", "3gp", "m4v", "flv", "ts")
         .any { uri.substringBefore('?').endsWith(".$it") }
 }
+
+internal fun prepareVideoItem(player: androidx.media3.common.Player, item: MediaItem) {
+    player.setPlaybackSpeed(1f)
+    player.setMediaItem(item)
+    player.prepare()
+}
