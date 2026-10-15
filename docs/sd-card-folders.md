@@ -88,3 +88,29 @@ This preview uses a retained local signing key. Uninstall the earlier OmegaPlaye
 SD preview once before installing 1.3.0, then reselect the SD Movies folder. This
 resets preview app settings/history without removing shared SD-card media or
 changing the original OmegaPlayer app. On Home, open Videos, then SD card · Movies.
+
+### Landscape UI preview 1.3.1
+
+Source: `519a051d96c723aadf4ef34b71a61f7ac2183373`.
+Build: https://github.com/firstel/OmegaPlayer/actions/runs/38805579338
+Release: https://github.com/firstel/OmegaPlayer/releases/tag/sdcard-preview-3
+
+The library now uses the explicit Folders heading and plural folder counts.
+Wide, short windows use an 80 dp navigation rail; portrait retains bottom
+navigation. PIN authentication uses a two-column prompt/keypad in landscape
+with bounded 48–64 dp keys and scroll fallback for exceptionally short windows.
+Setup/settings/security forms are bounded and scrollable with keyboard insets.
+Media grids adapt their column count and the audio player places artwork beside
+scrollable controls in landscape. Existing PIN verification and biometric
+settings remain in use.
+
+Assembly, all 9 unit tests and all 6 Android tests passed. Five Android tests
+check PIN key visibility in 800×360 dp landscape, larger text and portrait,
+key action order, populated-library labels/counts, and navigation to settings
+and locker setup. Screenshots for those states were inspected. Lint completed
+with 0 errors, 67 warnings and 3 hints. The signed APK passed v2/v3 verification
+and 16 KB ZIP alignment. Physical Thor validation remains a device check.
+
+Install 1.3.1 over the 1.3.0 preview without uninstalling: the retained signing
+key and application ID match, preserving settings, PIN and selected-folder
+access. Screenshots use emulator colors; device wallpaper colors can differ.
