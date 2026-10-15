@@ -90,7 +90,7 @@ internal fun DocumentFolderBrowser(
             }
         ) { padding ->
             Column(Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp)) {
-                Text("Choose a folder on your SD card using Android’s picker. If the card root is unavailable, choose Music, Movies, or another subfolder.")
+                Text("In Android’s picker, open Movies or another SD-card folder, tap Use this folder, then Allow. The picker selects folders; videos appear here after you return. If the card root is unavailable, choose a subfolder.")
                 Row {
                     TextButton(onClick = { picker.launch(treeString?.let(Uri::parse)) }) {
                         Text(if (treeString == null) "Select folder" else "Change folder")

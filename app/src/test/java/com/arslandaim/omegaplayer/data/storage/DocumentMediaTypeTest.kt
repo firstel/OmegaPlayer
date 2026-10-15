@@ -17,6 +17,14 @@ class DocumentMediaTypeTest {
         assertEquals(DocumentMediaType.AUDIO, DocumentMediaType.from("", "Track.opus"))
     }
 
+    @Test fun applicationContainerMimeDoesNotHideMovies() {
+        assertEquals(DocumentMediaType.VIDEO, DocumentMediaType.from("application/x-matroska", "Movie.mkv"))
+        assertEquals(DocumentMediaType.VIDEO, DocumentMediaType.from("application/mp4", "Movie.mp4"))
+        assertEquals(DocumentMediaType.VIDEO, DocumentMediaType.from("application/octet-stream", "Movie.M2TS"))
+        assertEquals(DocumentMediaType.AUDIO, DocumentMediaType.from("application/ogg", "Track.oga"))
+        assertNull(DocumentMediaType.from("application/pdf", "notes.pdf"))
+    }
+
     @Test fun directoriesAndNonMediaAreExcluded() {
         assertNull(DocumentMediaType.from("vnd.android.document/directory", "Music.mp3"))
         assertNull(DocumentMediaType.from(null, "notes.txt"))
