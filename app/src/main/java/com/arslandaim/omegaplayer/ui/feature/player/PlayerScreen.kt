@@ -10,6 +10,8 @@ import android.app.Activity
 import android.content.Context
 import android.content.pm.ActivityInfo
 import android.net.Uri
+import com.arslandaim.omegaplayer.media.videoMediaItem
+import com.arslandaim.omegaplayer.media.playbackUri
 import android.util.Log
 import android.view.LayoutInflater
 import android.widget.Toast
@@ -147,12 +149,21 @@ fun PlayerScreen(
     LaunchedEffect(videoUri, mediaController) {
         val player = mediaController ?: return@LaunchedEffect
         val newUri = Uri.parse(videoUri)
-        val currentUri = player.currentMediaItem?.localConfiguration?.uri
+        val currentUri = player.currentMediaItem?.playbackUri()
         if (currentUri != newUri) {
             playbackError = null
             player.stop()
             player.clearMediaItems()
-            player.setMediaItem(MediaItem.fromUri(newUri))
+            val details = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                val name = videosList.firstOrNull { it.uri == newUri }?.name ?: runCatching {
+                    context.contentResolver.query(newUri,
+                        arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+                        if (cursor.moveToFirst()) cursor.getString(0) else null
+                    }
+                }.getOrNull() ?: newUri.lastPathSegment?.substringAfterLast('/') ?: "Video"
+                name to runCatching { context.contentResolver.getType(newUri) }.getOrNull()
+            }
+            player.setMediaItem(videoMediaItem(newUri, details.first, details.second))
             player.prepare()
         }
         player.playWhenReady = true

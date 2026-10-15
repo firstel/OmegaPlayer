@@ -3,7 +3,10 @@ package com.arslandaim.omegaplayer.ui
 import android.graphics.SurfaceTexture
 import android.hardware.display.DisplayManager
 import android.view.Surface
-import android.widget.ImageButton
+import android.widget.Button
+import com.arslandaim.omegaplayer.R
+import androidx.media3.common.ForwardingPlayer
+import com.arslandaim.omegaplayer.media.*
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerControlView
 import androidx.test.core.app.ActivityScenario
@@ -18,6 +21,19 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 class SecondScreenTest {
+    @Test fun numericVideoUriKeepsTitleTypeAndUriAcrossSessionSerialization() {
+        val uri = android.net.Uri.parse("content://media/external/video/media/123")
+        val item = videoMediaItem(uri, "Test movie.mp4", "video/mp4")
+        val received = androidx.media3.common.MediaItem.fromBundle(item.toBundle())
+        assertTrue(received.isVideoItem())
+        assertEquals("Test movie.mp4", received.mediaMetadata.title.toString())
+        assertEquals(uri, received.playbackUri())
+        val audio = androidx.media3.common.MediaItem.Builder().setUri("content://media/external/audio/media/123")
+            .setMediaMetadata(androidx.media3.common.MediaMetadata.Builder()
+                .setMediaType(androidx.media3.common.MediaMetadata.MEDIA_TYPE_MUSIC).build()).build()
+        assertFalse(audio.isVideoItem())
+    }
+
     @Test fun secondDisplayControlsSharePlayerAndDetachOnDismiss() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             scenario.onActivity { activity ->
@@ -26,20 +42,44 @@ class SecondScreenTest {
                 val manager = activity.getSystemService(DisplayManager::class.java)
                 val display = manager.createVirtualDisplay("Omega controls test", 800, 600, 160,
                     surface, DisplayManager.VIRTUAL_DISPLAY_FLAG_PRESENTATION)
-                val player = ExoPlayer.Builder(activity).build()
+                val engine = ExoPlayer.Builder(activity).build()
+                var position = 30_000L
+                val player = object : ForwardingPlayer(engine) {
+                    override fun getDuration() = 60_000L
+                    override fun getCurrentPosition() = position
+                    override fun seekTo(positionMs: Long) { position = positionMs }
+                    override fun isCommandAvailable(command: Int) = true
+                }
                 var panel: PlaybackControlsPresentation? = null
                 try {
                     assertNotEquals(activity.window.decorView.display.displayId, display.display.displayId)
                     panel = PlaybackControlsPresentation(activity, display.display, player)
                     panel.show()
-                    // PlayerControlView is itself the content controller; locate the built-in play control.
-                    val play = panel.findViewById<ImageButton>(androidx.media3.ui.R.id.exo_play_pause)
+                    val play = panel.findViewById<Button>(R.id.bottom_play_pause)
                     assertNotNull(play)
                     assertSame(player, panel.attachedPlayer)
                     player.playWhenReady = false
                     play.performClick()
                     assertTrue(player.playWhenReady)
-                    panel.dismiss()
+                    val back = panel.findViewById<Button>(R.id.bottom_seek_back)
+                    val forward = panel.findViewById<Button>(R.id.bottom_seek_forward)
+                    back.performClick(); assertEquals(20_000L, position)
+                    forward.performClick(); assertEquals(30_000L, position)
+                    position = 4_000L
+                    back.performClick(); assertEquals(0L, position)
+                    position = 58_000L
+                    forward.performClick(); assertEquals(60_000L, position)
+                    panel.findViewById<Button>(R.id.bottom_mute).performClick()
+                    assertEquals(0f, player.volume)
+                    panel.findViewById<Button>(R.id.bottom_mute).performClick()
+                    assertEquals(1f, player.volume)
+                    panel.findViewById<Button>(R.id.bottom_speed).performClick()
+                    assertEquals(1.25f, player.playbackParameters.speed)
+                    panel.findViewById<Button>(R.id.bottom_stop).performClick()
+                    assertEquals(0L, position)
+                    assertFalse(player.playWhenReady)
+                    assertEquals(androidx.media3.common.Player.STATE_IDLE, player.playbackState)
+                    panel.findViewById<Button>(R.id.bottom_close).performClick()
                     assertNull(panel.attachedPlayer)
                     assertFalse(panel.isShowing)
                 } finally {

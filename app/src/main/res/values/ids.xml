@@ -1,0 +1,9 @@
+<resources>
+    <item name="bottom_seek_back" type="id" />
+    <item name="bottom_seek_forward" type="id" />
+    <item name="bottom_play_pause" type="id" />
+    <item name="bottom_stop" type="id" />
+    <item name="bottom_mute" type="id" />
+    <item name="bottom_speed" type="id" />
+    <item name="bottom_close" type="id" />
+</resources>

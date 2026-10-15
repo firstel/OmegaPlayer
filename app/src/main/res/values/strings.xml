@@ -176,4 +176,13 @@
     <string name="vault_setup_create">Create vault</string>
     <string name="vault_setup_pin">Choose a 4-digit PIN</string>
     <string name="vault_setup_recovery">Set a recovery question</string>
+    <string name="bottom_back_ten">−10 sec</string>
+    <string name="bottom_forward_ten">+10 sec</string>
+    <string name="bottom_play">Play</string>
+    <string name="bottom_pause">Pause</string>
+    <string name="bottom_stop">Stop</string>
+    <string name="bottom_mute">Mute</string>
+    <string name="bottom_unmute">Unmute</string>
+    <string name="bottom_speed">Speed %1$.2f×</string>
+    <string name="bottom_close">Close bottom controls</string>
 </resources>

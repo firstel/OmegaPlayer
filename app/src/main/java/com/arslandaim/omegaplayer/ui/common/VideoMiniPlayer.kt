@@ -7,6 +7,7 @@
 package com.arslandaim.omegaplayer.ui.common
 
 import android.net.Uri
+import com.arslandaim.omegaplayer.media.playbackUri
 import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -71,7 +72,7 @@ fun VideoMiniPlayer(
     }
 
     val defaultTitle = stringResource(R.string.video_playback_default_title)
-    val uri = mediaItem.localConfiguration?.uri ?: Uri.EMPTY
+    val uri = mediaItem.playbackUri() ?: Uri.EMPTY
     val title = mediaItem.mediaMetadata.title?.toString() 
         ?: uri.lastPathSegment 
         ?: defaultTitle
