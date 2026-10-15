@@ -216,3 +216,39 @@ Existing PIN/library/metadata/transport checks also passed. Lint: 0 errors,
 70 warnings, 3 hints. APK v2/v3 signature and 16 KB ZIP alignment verified.
 SHA-256: `bd0435bd97ef7e31984280af7f27f2df07fd274560f9b95a02c723eb9573ba5b`.
 Actual Thor thumbnail performance and final screen layout remain device checks.
+
+### Media-volume accuracy and audio checks preview 1.4.3
+
+The old 100% represented only Player.volume, which could disagree with Android's
+media stream. The bottom controls now adjust AudioManager.STREAM_MUSIC and show
+its actual rounded percentage/mute state, including hardware-button changes.
+The primary video volume gesture uses the same stream. The bottom window directs
+volume keys to media. MODIFY_AUDIO_SETTINGS is a normal manifest permission.
+Device volume is never raised at startup. Video preparation resets residual
+player attenuation, clears audio track overrides and re-enables audio selection.
+
+The shared service player configuration enables decoder fallback. Ready videos
+with missing, unsupported or unselected audio show an explanatory bottom-panel
+message. This is diagnostic and uses the current platform decoder capabilities;
+it does not add a software codec bundle. Sound returned on the installed 1.4.2
+without an update; the intermittent silence has no confirmed root cause. Actual
+Thor audio behavior still requires device validation.
+
+PIN deletion now remains available during asynchronous verification. Deleting a
+digit cancels the attempt and invalidates late results, so an edited PIN cannot
+unlock from an earlier submission. Dots reflect the current input immediately.
+PIN hashing runs off the UI thread. Vault creation shows saving progress and
+prevents repeated submissions; failure leaves the form available for retry.
+Setup PIN fields normalize numeric input to four digits instead of rejecting an
+entire keyboard edit. Existing vault contents and PIN hashes remain compatible.
+
+Verified source: `9187a01a7a41f2fa494ebc3b4f200c67ce3fd500`.
+Build: https://github.com/firstel/OmegaPlayer/actions/runs/38826217628
+Release: https://github.com/firstel/OmegaPlayer/releases/tag/sdcard-preview-7
+
+APK assembly, all 9 unit tests and all 12 Android tests passed, including a delayed
+verification/delete regression, AAC audio decoding/rendering, device media-volume
+controls and existing landscape, presentation and thumbnail checks. Lint: 0 errors,
+70 warnings, 3 hints. Emulator audio rendering does not verify audible sound on a
+physical Thor. APK v2/v3 signatures and 16 KB ZIP alignment verified with the retained
+preview key. SHA-256: `717f9a9e8006bd1f3e1c3dc0673c4a6c4d22adf471ae43aeeced8a3683cb83b7`.
