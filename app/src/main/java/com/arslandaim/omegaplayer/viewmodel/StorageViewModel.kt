@@ -61,7 +61,7 @@ class StorageViewModel @Inject constructor(
                 val total = totalBlocks * blockSize
                 val free = availableBlocks * blockSize
                 
-                val videoSize = videos.sumOf { it.size }
+                val videoSize = videos.filterNot { it.isDocument }.sumOf { it.size }
                 val audioSize = audios.sumOf { it.size }
                 
                 val used = total - free

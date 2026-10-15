@@ -175,14 +175,14 @@ class VideoViewModel @Inject constructor(
 
     val folders: StateFlow<Map<String, Int>> = videos
         .map { videoList ->
-            videoList.groupBy { File(it.path).parentFile?.name ?: "Internal" }
+            videoList.groupBy { it.folderName }
                 .mapValues { it.value.size }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
     val videosInSelectedFolder: StateFlow<List<VideoModel>> = combine(videos, _selectedFolder) { videoList, folder ->
         if (folder == null) emptyList()
-        else videoList.filter { (File(it.path).parentFile?.name ?: "Internal") == folder }
+        else videoList.filter { (it.folderName) == folder }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     @androidx.annotation.OptIn(UnstableApi::class)
@@ -231,7 +231,7 @@ class VideoViewModel @Inject constructor(
 
 
     fun getVideosInFolder(folderName: String): List<VideoModel> {
-        return videos.value.filter { (File(it.path).parentFile?.name ?: "Internal") == folderName }
+        return videos.value.filter { (it.folderName) == folderName }
     }
 
     fun fetchVideos(context: Context) {

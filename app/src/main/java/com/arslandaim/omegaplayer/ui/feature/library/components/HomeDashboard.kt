@@ -43,7 +43,8 @@ import java.nio.charset.StandardCharsets
 fun HomeDashboard(
     selectedTab: MediaTab,
     storageStats: StorageStats,
-    onTabSelected: (MediaTab) -> Unit
+    onTabSelected: (MediaTab) -> Unit,
+    compact: Boolean = false
 ) {
     Column(
         modifier = Modifier
@@ -54,7 +55,7 @@ fun HomeDashboard(
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(56.dp),
+                .height(if (compact) 40.dp else 56.dp),
             shape = RoundedCornerShape(28.dp),
             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
         ) {
@@ -99,7 +100,7 @@ fun HomeDashboard(
             }
         }
 
-        if (selectedTab == MediaTab.VIDEOS) {
+        if (selectedTab == MediaTab.VIDEOS && !compact) {
             Spacer(modifier = Modifier.height(12.dp))
             LinearStorageVisualization(stats = storageStats)
         }

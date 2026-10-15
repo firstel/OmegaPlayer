@@ -19,8 +19,8 @@ android {
         applicationId = "com.arslandaim.omegaplayer"
         minSdk = 25
         targetSdk = 36
-        versionCode = 7
-        versionName = "1.2.2"
+        versionCode = 8
+        versionName = "1.3.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

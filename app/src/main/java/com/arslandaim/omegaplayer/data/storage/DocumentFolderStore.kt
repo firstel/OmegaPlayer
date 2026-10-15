@@ -11,7 +11,8 @@ internal data class FolderEntry(
     val uri: Uri,
     val name: String,
     val isDirectory: Boolean,
-    val mediaType: DocumentMediaType?
+    val mediaType: DocumentMediaType?,
+    val size: Long = 0L
 )
 
 /** Never resolves content URIs to filesystem paths or relies on MediaStore indexing. */
@@ -39,7 +40,8 @@ internal class DocumentFolderStore(context: Context) {
             DocumentsContract.Document.COLUMN_DOCUMENT_ID,
             DocumentsContract.Document.COLUMN_DISPLAY_NAME,
             DocumentsContract.Document.COLUMN_MIME_TYPE,
-            DocumentsContract.Document.COLUMN_FLAGS
+            DocumentsContract.Document.COLUMN_FLAGS,
+            DocumentsContract.Document.COLUMN_SIZE
         )
         val entries = mutableListOf<FolderEntry>()
         val cursor = resolver.query(children, columns, null, null, null)
@@ -55,7 +57,7 @@ internal class DocumentFolderStore(context: Context) {
                 // Virtual documents cannot be opened directly by the playback service.
                 if (flags and DocumentsContract.Document.FLAG_VIRTUAL_DOCUMENT != 0) continue
                 if (isDirectory || type != null) {
-                    entries += FolderEntry(DocumentsContract.buildDocumentUriUsingTree(tree, id), name, isDirectory, type)
+                    entries += FolderEntry(DocumentsContract.buildDocumentUriUsingTree(tree, id), name, isDirectory, type, if (it.isNull(4)) 0L else it.getLong(4))
                 }
             }
         }

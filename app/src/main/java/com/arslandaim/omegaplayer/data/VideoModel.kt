@@ -16,5 +16,9 @@ data class VideoModel(
     val name: String,
     val duration: Long,
     val size: Long,
-    val path: String
-)
+    val path: String,
+    val documentFolder: String? = null
+) {
+    val isDocument: Boolean get() = documentFolder != null
+    val folderName: String get() = documentFolder ?: (java.io.File(path).parentFile?.name ?: "Internal")
+}

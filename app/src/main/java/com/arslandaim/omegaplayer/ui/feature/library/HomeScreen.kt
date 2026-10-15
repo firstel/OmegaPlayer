@@ -93,7 +93,18 @@ fun HomeScreen(
     initialTab: MediaTab? = null
 ) {
     val context = LocalContext.current
+    val isCompact = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp < 600
+    var showCompactSearch by rememberSaveable { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
+    DisposableEffect(lifecycle) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) viewModel.refreshVideos(context)
+        }
+        lifecycle.addObserver(observer)
+        onDispose { lifecycle.removeObserver(observer) }
+    }
+    val libraryError by viewModel.videoError.collectAsStateWithLifecycle()
     
     var selectedTab by rememberSaveable { mutableStateOf(initialTab ?: MediaTab.VIDEOS) }
     var showDocumentFolders by rememberSaveable { mutableStateOf(false) }
@@ -505,17 +516,25 @@ fun HomeScreen(
                             }
                         }
                     },
+                    actions = {
+                        if (isCompact) {
+                            IconButton(onClick = { showCompactSearch = !showCompactSearch }) { Icon(Icons.Default.Search, "Search") }
+                        }
+                        IconButton(onClick = { viewModel.refreshVideos(context) }) { Icon(Icons.Default.Refresh, "Refresh videos") }
+                        IconButton(onClick = { showDocumentFolders = true }) { Icon(Icons.Default.FolderOpen, "Choose SD-card folder") }
+                    },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
                 )
-                TextButton(onClick = { showDocumentFolders = true }) {
+                if (!isCompact) TextButton(onClick = { showDocumentFolders = true }) {
                     Icon(Icons.Default.FolderOpen, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
                     Text("SD card folders")
                 }
+                libraryError?.let { Text(it, modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.error) }
                 if (currentSelectedFolder == null && selectedPlaylistForDetails == null) {
-                    HomeDashboard(selectedTab = selectedTab, storageStats = storageStats, onTabSelected = { tab -> selectedTab = tab })
+                    HomeDashboard(selectedTab = selectedTab, storageStats = storageStats, onTabSelected = { tab -> selectedTab = tab }, compact = isCompact)
                 }
-                Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                if (!isCompact || showCompactSearch) Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     OutlinedTextField(value = searchQuery, onValueChange = { searchQuery = it }, modifier = Modifier.weight(1f), placeholder = { Text(stringResource(R.string.search_placeholder), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)) }, leadingIcon = { Icon(Icons.Default.Search, null, tint = MaterialTheme.colorScheme.primary) }, trailingIcon = { if (searchQuery.isNotEmpty()) { IconButton(onClick = { searchQuery = "" }) { Icon(Icons.Default.Close, null) } } }, shape = RoundedCornerShape(20.dp), colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = MaterialTheme.colorScheme.primary, unfocusedBorderColor = Color.Transparent, focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f), unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)), singleLine = true, textStyle = MaterialTheme.typography.bodyLarge)
                     Spacer(modifier = Modifier.width(8.dp))
                     IconButton(onClick = { isGridView = !isGridView }, modifier = Modifier.background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f), CircleShape)) { Icon(if (isGridView) Icons.Default.ViewList else Icons.Default.GridView, null, tint = MaterialTheme.colorScheme.primary) }
@@ -568,7 +587,7 @@ fun HomeScreen(
                                     if (playlists.isEmpty()) { item { Box(modifier = Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) { Text("No playlists yet", color = MaterialTheme.colorScheme.onSurfaceVariant) } } }
                                     else { items(playlists, key = { it.id }) { playlist -> PlaylistListItem(playlist = playlist, onClick = { selectedPlaylistForDetails = playlist }, onDelete = { audioViewModel.deletePlaylist(playlist) }) } }
                                 } else {
-                                    items(filteredFolders.keys.toList(), key = { it }) { folderName -> FolderListItem(name = folderName, count = filteredFolders[folderName] ?: 0, onClick = { if (pageTab == MediaTab.VIDEOS) viewModel.setSelectedFolder(folderName) else audioViewModel.setSelectedFolder(folderName) }, onDelete = { folderToDelete = folderName }, onMoveToLocker = { checkPinAndProceed { folderToMoveToLocker = folderName } }) }
+                                    items(filteredFolders.keys.toList(), key = { it }) { folderName -> FolderListItem(name = folderName, count = filteredFolders[folderName] ?: 0, onClick = { if (pageTab == MediaTab.VIDEOS) viewModel.setSelectedFolder(folderName) else audioViewModel.setSelectedFolder(folderName) }, canManage = pageTab != MediaTab.VIDEOS || viewModel.getVideosInFolder(folderName).none { it.isDocument }, onDelete = { folderToDelete = folderName }, onMoveToLocker = { checkPinAndProceed { folderToMoveToLocker = folderName } }) }
                                 }
                             } else if (selectedPlaylistForDetails != null) {
                                 items(playlistItems, key = { it.id }) { item -> MediaListItemInPlaylist(item = item, videos = videos, audios = audios, videoViewModel = viewModel, audioViewModel = audioViewModel, sharedTransitionScope = sharedTransitionScope, animatedVisibilityScope = animatedVisibilityScope, onVideoClick = onVideoClick, onAudioClick = onAudioClick, playlist = selectedPlaylistForDetails!!, onVideoLock = { checkPinAndProceed { selectedVideoForLocker = it } }, onAudioLock = { checkPinAndProceed { selectedAudioForLocker = it } }, onVideoDelete = { selectedVideoForDelete = it }, onAudioDelete = { selectedAudioForDelete = it }) }

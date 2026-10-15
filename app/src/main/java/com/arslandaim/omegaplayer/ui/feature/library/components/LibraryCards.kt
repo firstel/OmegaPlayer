@@ -145,7 +145,8 @@ fun FolderListItem(
     count: Int,
     onClick: () -> Unit,
     onDelete: () -> Unit,
-    onMoveToLocker: () -> Unit
+    onMoveToLocker: () -> Unit,
+    canManage: Boolean = true
 ) {
     var showMenu by remember { mutableStateOf(false) }
 
@@ -192,7 +193,7 @@ fun FolderListItem(
                 )
             }
             
-            Box {
+            if (canManage) Box {
                 IconButton(onClick = { showMenu = true }) {
                     Icon(
                         imageVector = Icons.Default.MoreVert,
@@ -470,7 +471,7 @@ fun VideoListItem(
                 .fillMaxWidth()
                 .combinedClickable(
                     onClick = onClick,
-                    onLongClick = onLockClick
+                    onLongClick = { if (!video.isDocument) onLockClick() }
                 )
                 .sharedBounds(
                     rememberSharedContentState(key = "video_bounds_${video.uri}"),
@@ -568,7 +569,7 @@ fun VideoListItem(
                 }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = onLockClick) {
+                    if (!video.isDocument) IconButton(onClick = onLockClick) {
                         Icon(
                             Icons.Default.Lock,
                             contentDescription = "Move to Locker",
@@ -604,7 +605,7 @@ fun VideoListItem(
                                     ) 
                                 }
                             )
-                            DropdownMenuItem(
+                            if (!video.isDocument) DropdownMenuItem(
                                 text = { Text(stringResource(R.string.action_delete), color = MaterialTheme.colorScheme.error) },
                                 onClick = { 
                                     showMenu = false
