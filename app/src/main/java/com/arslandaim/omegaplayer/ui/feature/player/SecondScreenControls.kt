@@ -22,7 +22,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
-import androidx.media3.ui.PlayerControlView
+import com.arslandaim.omegaplayer.media.playbackUri
 import com.arslandaim.omegaplayer.R
 import androidx.compose.ui.res.stringResource
 
@@ -43,6 +43,8 @@ internal class PlaybackControlsPresentation(
     private lateinit var play: android.widget.Button
     private lateinit var mute: android.widget.Button
     private lateinit var speed: android.widget.Button
+    private lateinit var volumeLabel: TextView
+    private lateinit var timeline: VideoThumbnailTimeline
     private var scrubbing = false
     private var previousVolume = 1f
     private val ticker = object : Runnable {
@@ -66,6 +68,8 @@ internal class PlaybackControlsPresentation(
             R.string.bottom_pause else R.string.bottom_play)
         mute.setText(if (playback.volume == 0f) R.string.bottom_unmute else R.string.bottom_mute)
         speed.text = context.getString(R.string.bottom_speed, playback.playbackParameters.speed)
+        volumeLabel.text = context.getString(R.string.bottom_volume_level, (playback.volume * 100).toInt())
+        timeline.load(playback.currentMediaItem?.playbackUri(), duration)
     }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -88,6 +92,10 @@ internal class PlaybackControlsPresentation(
             textSize = 16f; gravity = Gravity.CENTER; setTextColor(android.graphics.Color.LTGRAY)
         }
         panel.addView(time)
+        timeline = VideoThumbnailTimeline(context) { position ->
+            if (playback.isCommandAvailable(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)) playback.seekTo(position)
+        }.apply { id = R.id.bottom_timeline }
+        panel.addView(timeline, LinearLayout.LayoutParams(-1, -2))
         progress = android.widget.SeekBar(context).apply {
             max = 1000
             setOnSeekBarChangeListener(object : android.widget.SeekBar.OnSeekBarChangeListener {
@@ -140,6 +148,17 @@ internal class PlaybackControlsPresentation(
             val speeds = listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f)
             playback.setPlaybackSpeed(speeds.firstOrNull { it > playback.playbackParameters.speed + 0.01f } ?: speeds.first())
         }
+        val volumeRow = row()
+        button(volumeRow, R.id.bottom_volume_down, R.string.bottom_volume_down) {
+            playback.volume = (playback.volume - 0.1f).coerceAtLeast(0f)
+        }
+        volumeLabel = TextView(context).apply {
+            textSize = 14f; gravity = Gravity.CENTER; setTextColor(android.graphics.Color.WHITE)
+        }
+        volumeRow.addView(volumeLabel, LinearLayout.LayoutParams(0, -1, 1f))
+        button(volumeRow, R.id.bottom_volume_up, R.string.bottom_volume_up) {
+            playback.volume = (playback.volume + 0.1f).coerceAtMost(1f)
+        }
         button(row(), R.id.bottom_close, R.string.bottom_close) {
             onVideoClosing()
             playback.pause()
@@ -165,6 +184,7 @@ internal class PlaybackControlsPresentation(
         handler.removeCallbacks(ticker)
         playback.removeListener(listener)
         attached = false
+        timeline.close()
         super.onStop()
     }
 }

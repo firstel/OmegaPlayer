@@ -185,4 +185,8 @@
     <string name="bottom_unmute">Unmute</string>
     <string name="bottom_speed">Speed %1$.2f×</string>
     <string name="bottom_close">Close video</string>
+    <string name="bottom_volume_down">Volume −</string>
+    <string name="bottom_volume_up">Volume +</string>
+    <string name="bottom_volume_level">Volume %1$d%%</string>
+    <string name="bottom_preview_at">Seek to approximately %1$s</string>
 </resources>

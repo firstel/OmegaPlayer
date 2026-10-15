@@ -6,4 +6,7 @@
     <item name="bottom_mute" type="id" />
     <item name="bottom_speed" type="id" />
     <item name="bottom_close" type="id" />
+    <item name="bottom_volume_down" type="id" />
+    <item name="bottom_volume_up" type="id" />
+    <item name="bottom_timeline" type="id" />
 </resources>
