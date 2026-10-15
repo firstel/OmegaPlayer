@@ -189,4 +189,7 @@
     <string name="bottom_volume_up">Volume +</string>
     <string name="bottom_volume_level">Media volume %1$d%%</string>
     <string name="bottom_preview_at">Seek to approximately %1$s</string>
+    <string name="audio_missing_track">This video has no audio track.</string>
+    <string name="audio_unsupported_track">This video’s audio format isn’t supported on this device.</string>
+    <string name="audio_disabled_track">No audio track is selected.</string>
 </resources>

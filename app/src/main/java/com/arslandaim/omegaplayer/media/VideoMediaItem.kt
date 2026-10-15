@@ -29,6 +29,10 @@ internal fun MediaItem.isVideoItem(): Boolean {
 internal fun prepareVideoItem(player: androidx.media3.common.Player, item: MediaItem) {
     player.setPlaybackSpeed(1f)
     player.volume = 1f
+    player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
+        .setTrackTypeDisabled(androidx.media3.common.C.TRACK_TYPE_AUDIO, false)
+        .clearOverridesOfType(androidx.media3.common.C.TRACK_TYPE_AUDIO)
+        .build()
     player.setMediaItem(item)
     player.prepare()
 }

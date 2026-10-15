@@ -29,28 +29,7 @@ class PlaybackService : MediaSessionService() {
     override fun onCreate() {
         super.onCreate()
         
-        val loadControl = DefaultLoadControl.Builder()
-            .setBufferDurationsMs(
-                15_000, // minBufferMs
-                50_000, // maxBufferMs
-                1_500,  // bufferForPlaybackMs
-                3_000   // bufferForPlaybackAfterRebufferMs
-            )
-            .setPrioritizeTimeOverSizeThresholds(true)
-            .build()
-
-        val player = ExoPlayer.Builder(this)
-            .setLoadControl(loadControl)
-            .setSeekParameters(SeekParameters.CLOSEST_SYNC)
-            .setAudioAttributes(
-                AudioAttributes.Builder()
-                    .setUsage(C.USAGE_MEDIA)
-                    .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
-                    .build(),
-                true
-            )
-            .setHandleAudioBecomingNoisy(true)
-            .build()
+        val player = createPlaybackPlayer(this)
 
         val intent = Intent(this, MainActivity::class.java).apply {
             data = Uri.parse("omegaplayer://main?tab=audios")
@@ -85,4 +64,26 @@ class PlaybackService : MediaSessionService() {
         }
         super.onDestroy()
     }
+}
+
+@androidx.annotation.OptIn(UnstableApi::class)
+internal fun createPlaybackPlayer(context: android.content.Context): ExoPlayer {
+    val loadControl = DefaultLoadControl.Builder()
+        .setBufferDurationsMs(15_000, 50_000, 1_500, 3_000)
+        .setPrioritizeTimeOverSizeThresholds(true)
+        .build()
+    val renderers = androidx.media3.exoplayer.DefaultRenderersFactory(context)
+        .setEnableDecoderFallback(true)
+    return ExoPlayer.Builder(context, renderers)
+        .setLoadControl(loadControl)
+        .setSeekParameters(SeekParameters.CLOSEST_SYNC)
+        .setAudioAttributes(
+            AudioAttributes.Builder()
+                .setUsage(C.USAGE_MEDIA)
+                .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
+                .build(),
+            true
+        )
+        .setHandleAudioBecomingNoisy(true)
+        .build()
 }

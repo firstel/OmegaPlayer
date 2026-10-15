@@ -40,6 +40,7 @@ internal class PlaybackControlsPresentation(
     private val handler = Handler(Looper.getMainLooper())
     private lateinit var progress: android.widget.SeekBar
     private lateinit var time: TextView
+    private lateinit var audioStatus: TextView
     private lateinit var play: android.widget.Button
     private lateinit var mute: android.widget.Button
     private lateinit var speed: android.widget.Button
@@ -70,9 +71,19 @@ internal class PlaybackControlsPresentation(
         speed.text = context.getString(R.string.bottom_speed, playback.playbackParameters.speed)
         volumeLabel.text = context.getString(R.string.bottom_volume_level, deviceVolume.percent)
         timeline.load(playback.currentMediaItem?.playbackUri(), duration)
+        val audioGroups = playback.currentTracks.groups.filter { it.type == androidx.media3.common.C.TRACK_TYPE_AUDIO }
+        val message = if (playback.playbackState != Player.STATE_READY) null
+            else if (audioGroups.isEmpty()) context.getString(R.string.audio_missing_track)
+            else if (audioGroups.none { group -> (0 until group.length).any { group.isTrackSupported(it) } })
+                context.getString(R.string.audio_unsupported_track)
+            else if (audioGroups.none { it.isSelected }) context.getString(R.string.audio_disabled_track)
+            else null
+        audioStatus.text = message
+        audioStatus.visibility = if (message == null) android.view.View.GONE else android.view.View.VISIBLE
     }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        window?.setVolumeControlStream(android.media.AudioManager.STREAM_MUSIC)
         window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or WindowManager.LayoutParams.FLAG_SECURE)
         val density = context.resources.displayMetrics.density
         fun dp(value: Int) = (value * density).toInt()
@@ -92,6 +103,12 @@ internal class PlaybackControlsPresentation(
             textSize = 16f; gravity = Gravity.CENTER; setTextColor(android.graphics.Color.LTGRAY)
         }
         panel.addView(time)
+        audioStatus = TextView(context).apply {
+            textSize = 13f; gravity = Gravity.CENTER
+            setTextColor(android.graphics.Color.YELLOW)
+            visibility = android.view.View.GONE
+        }
+        panel.addView(audioStatus)
         timeline = VideoThumbnailTimeline(context) { position ->
             if (playback.isCommandAvailable(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)) playback.seekTo(position)
         }.apply { id = R.id.bottom_timeline }
