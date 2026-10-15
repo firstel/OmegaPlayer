@@ -33,14 +33,19 @@ class AutoControlsTest {
             player = ExoPlayer.Builder(context).build()
         }
         try {
+            compose.waitUntil(10_000) {
+                context.getSystemService(DisplayManager::class.java)
+                    .getDisplays(DisplayManager.DISPLAY_CATEGORY_PRESENTATION)
+                    .any { it.displayId == display.display.displayId && it.isValid }
+            }
             compose.setContent { if (mounted.value) SecondScreenControlsButton(player, false, uri.value, {}, {}) }
-            compose.waitUntil(5_000) {
+            compose.waitUntil(15_000) {
                 compose.onAllNodesWithText("Turn off bottom controls").fetchSemanticsNodes().isNotEmpty()
             }
             compose.onNodeWithText("Turn off bottom controls").performClick()
             compose.onNodeWithText("Bottom-screen controls").assertExists()
             compose.runOnIdle { uri.value = "content://test/second.mp4" }
-            compose.waitUntil(5_000) {
+            compose.waitUntil(15_000) {
                 compose.onAllNodesWithText("Turn off bottom controls").fetchSemanticsNodes().isNotEmpty()
             }
         } finally {
