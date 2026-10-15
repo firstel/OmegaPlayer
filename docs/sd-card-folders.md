@@ -43,3 +43,13 @@ Device checks (require Android hardware/emulator with a documents provider):
 - Empty directories, non-media-only directories, large folders and unavailable
   documents should remain responsive and show an empty/recovery state.
 - Verify original MediaStore video/audio lists and playback still work.
+
+### Build attempt in this change
+
+Local `bash gradlew :app:testDebugUnitTest :app:assembleDebug :app:lintDebug`
+could not start: Java is not installed, and no Android SDK was found on this Mac.
+GitHub Actions successfully configured Java 21 and Android command-line tools,
+but `sdkmanager 'platforms;android-37'` failed with “Failed to find package”.
+The existing upstream project targets/compiles SDK 37; those settings were not
+changed. Consequently Android compilation, unit tests and lint have not run,
+and no APK is available. A device verification pass is also still required.
