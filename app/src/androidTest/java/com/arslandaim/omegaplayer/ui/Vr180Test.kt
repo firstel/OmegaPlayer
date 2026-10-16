@@ -67,9 +67,10 @@ class Vr180Test {
                         }
                         assertTrue(latch.await(3,TimeUnit.SECONDS))
                         if(result == PixelCopy.SUCCESS) {
-                            val color=bitmap.getPixel(16,16)
-                            matched=if(right) Color.blue(color)>150 && Color.red(color)<80
-                                else Color.red(color)>150 && Color.blue(color)<80
+                            val top=bitmap.getPixel(16,8)
+                            val bottom=bitmap.getPixel(16,24)
+                            matched=if(right) Color.blue(top)>150 && Color.red(top)<80
+                                else Color.red(top)>150 && Color.blue(top)<80 && Color.green(bottom)>150 && Color.red(bottom)<80
                         }
                         bitmap.recycle()
                         if(!matched) Thread.sleep(50)

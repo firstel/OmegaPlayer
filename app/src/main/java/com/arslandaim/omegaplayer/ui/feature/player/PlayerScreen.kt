@@ -316,6 +316,8 @@ fun PlayerScreen(
                 update = { it.bind(mediaController) },
                 onRelease = { it.close(); if (vrView === it) vrView = null },
                 modifier = Modifier.fillMaxSize().pointerInput(vr180, isLocked) {
+                    detectTapGestures(onTap = { isControlsVisible = !isControlsVisible })
+                }.pointerInput(vr180, isLocked) {
                     if (!isLocked) detectDragGestures { change, drag ->
                         change.consume()
                         vr180.look(-drag.x / size.width * 100f, drag.y / size.height * 80f)

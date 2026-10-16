@@ -62,7 +62,7 @@ internal class Vr180View(context: Context, private val state: Vr180State) : GLSu
     private val transform = FloatArray(16)
     private val vertices = ByteBuffer.allocateDirect(8 * 4).order(ByteOrder.nativeOrder())
         .asFloatBuffer().apply { put(floatArrayOf(-1f,-1f, 1f,-1f, -1f,1f, 1f,1f)); position(0) }
-    init { setEGLContextClientVersion(2); setRenderer(this); renderMode = RENDERMODE_CONTINUOUSLY }
+    init { setEGLContextClientVersion(2); preserveEGLContextOnPause = true; setRenderer(this); renderMode = RENDERMODE_CONTINUOUSLY }
 
     fun bind(value: Player?) {
         if (player !== value) {
