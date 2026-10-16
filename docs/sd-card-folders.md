@@ -367,3 +367,44 @@ verified with the retained key. SHA-256:
 A subsequent test-only screenshot capture commit has identical app sources; its
 initial run failed to download the emulator image, so the release uses the fully
 verified build above. Thor physical layout/key mapping remains a device check.
+
+### Playback/keypad haptics and SBS-on default preview 1.5.3
+
+A shared application preference controls PlaybackHaptics in the video controls,
+existing video gestures and custom PIN keypad digits/Delete/Unlock. The compact
+audio row adds a Haptics On/Off touch button without adding another row. Pulses
+use the device vibrator (VibratorManager on API 31+) with a 12 ms tap, 22 ms skip
+or short recenter double pulse, rate-limited to 45 ms minimum spacing. Android's
+HAPTIC_FEEDBACK_ENABLED setting and hardware availability are respected. The app
+adds the normal VIBRATE permission; no runtime prompt is required. Thumbstick
+frame updates request no feedback. Trigger feedback is emitted only after the
+existing combined press-state handler performs a seek. Opening a video now sets
+SBS on, while motion remains off and eye/view/zoom reset to defaults.
+
+The top-screen SBS label/toggle is removed; the lower-screen SBS toggle remains.
+Joystick and D-pad view changes are accepted in both flat and spherical modes.
+Flat playback applies the shared observable zoom/yaw/pitch to a bounded graphics
+layer transform, combining existing pinch/pan controls. At 1× there is no excess
+picture to pan; zoom first. Recenter resets both controller and touch transforms.
+
+D-pad input now combines digital direction keys with HAT_X/HAT_Y direction axes
+(and DPAD-source X/Y fallback), preventing duplicate steps when both are reported.
+The main window delegates through a Window.Callback wrapper to route playback
+keys before Compose/native focus navigation can consume D-pad events. Other
+keys/events retain the original callback; outside video playback no handler is
+installed. The secondary Presentation retains direct dispatch to the same router.
+
+Verified source: `1091e5b7dbbec05e37fadf9038782818ce3d0a50`.
+Build: https://github.com/firstel/OmegaPlayer/actions/runs/38944462590
+Release: https://github.com/firstel/OmegaPlayer/releases/tag/sdcard-preview-12
+
+APK assembly, all 9 unit tests and all 23 Android tests passed. Checks cover
+haptic action routing, no pulses for continuous stick movement, one pulse per
+trigger press, SBS startup, regular-mode stick input, D-pad hat/key coalescing,
+and pre-focus Window.Callback routing. Existing playback, PIN, history, vault
+and compact layout checks passed. PIN layout checks now wait for root attachment
+following a transient missing-root failure. The native controls capture was visually
+reviewed and fits the Haptics toggle without another row. Lint: 0 errors,
+77 warnings, 3 hints. APK v2/v3 signatures and 16 KB ZIP alignment verified.
+SHA-256: `90d981b4f3db0e0a7927567438ad11149185258ddfdb21c11dae7072561007dc`.
+Thor D-pad input and actual vibration strength/feel remain device checks.
