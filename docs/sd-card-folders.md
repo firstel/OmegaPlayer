@@ -430,3 +430,24 @@ Source: 4b9b48dd5743b17f91f529c6d8cf1063afc42c10
 SHA-256: 7ab4c49eb5ff52509223df62f72bfb7c8ec03fea0122d9f9220e6d9cc5d76158
 
 Release: https://github.com/firstel/OmegaPlayer/releases/tag/sdcard-preview-13
+
+
+## Improved SBS detection — 1.5.5 preview
+
+OmegaPlayer SD 1.5.5 preview improves automatic SBS detection after missed stereo videos in 1.5.4.
+
+- Compares smaller image regions independently so objects at different depths need not line up with one global offset.
+- Tolerates brightness differences and small vertical offsets between the two eyes.
+- Tries up to three small interior frames, stopping at the first stereo match. Blank and low-detail regions are excluded.
+- Manual SBS/L3 choices still take priority, and old detection results cannot change a new video.
+
+Detection remains a heuristic. Accuracy on your two videos still needs a Thor device check; the manual SBS toggle remains available.
+
+Install over the existing app without uninstalling to preserve the vault. The preview signing key is unchanged.
+
+Validation: APK build, 9 unit tests and 29 Android tests passed, including variable stereo depth/exposure, smooth-gradient rejection, decoded SBS fixture and existing playback/layout/vault checks. Lint: 0 errors, 78 warnings, 3 hints. APK v2/v3 signatures and 16 KB ZIP alignment verified.
+Build: https://github.com/firstel/OmegaPlayer/actions/runs/38963337884
+Source: bc48d1fe5bfe68e9106f1de14dcfa82f61f4811e
+SHA-256: e9fc7bb35a8a5b50c745876926ba97587a9f3f60f539627297d0879a7217d28a
+
+Release: https://github.com/firstel/OmegaPlayer/releases/tag/sdcard-preview-14
