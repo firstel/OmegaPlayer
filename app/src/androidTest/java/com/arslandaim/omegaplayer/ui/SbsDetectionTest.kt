@@ -40,6 +40,16 @@ class SbsDetectionTest {
         state.detectedSbs(second,true)
         assertTrue(state.enabled)
     }
+    @Test fun decodesSampledVideoFrame() {
+        val instrumentation=InstrumentationRegistry.getInstrumentation()
+        val file=java.io.File(instrumentation.targetContext.cacheDir,"sbs-detection-test.mp4")
+        try {
+            instrumentation.context.assets.open("sbs-detection-test.mp4").use { input ->
+                file.outputStream().use { output -> input.copyTo(output) }
+            }
+            assertTrue(detectSbsVideo(instrumentation.targetContext,Uri.fromFile(file)))
+        } finally { file.delete() }
+    }
     @Test fun unreadableFileFallsBackToNormalPlayback() {
         assertFalse(detectSbsVideo(InstrumentationRegistry.getInstrumentation().targetContext,
             Uri.parse("file:///missing-sbs-test.mp4")))
