@@ -68,7 +68,7 @@ class CompactControlsTest {
                     state.zoomBy(1f); state.look(20f,20f)
                     panel.dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BUTTON_Y))
                     assertEquals(1f,state.zoom,.001f); assertEquals(0f,state.yaw,.001f)
-                    state.startVideo(); assertTrue(state.enabled); assertFalse(state.motion)
+                    state.startVideo(); assertFalse(state.enabled); assertFalse(state.motion)
                     panel.dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BUTTON_X))
                     assertTrue(saved); assertTrue(closed); assertEquals(0,player.mediaItemCount)
                     assertFalse(panel.isShowing)

@@ -22,7 +22,12 @@ internal class Vr180State {
     var rightEye by mutableStateOf(false)
     var motion by mutableStateOf(false)
     var motionAvailable = false
-    fun startVideo() { enabled = true; motion = false; rightEye = false; center() }
+    private var modeRevision = 0
+    fun startVideo(): Int { modeRevision++; enabled = false; motion = false; rightEye = false; center(); return modeRevision }
+    fun toggleSbs() { modeRevision++; enabled = !enabled; center() }
+    fun detectedSbs(revision: Int, detected: Boolean) {
+        if (revision == modeRevision) { enabled = detected; center() }
+    }
     var recenter by mutableIntStateOf(0)
     var yaw by mutableFloatStateOf(0f)
     var pitch by mutableFloatStateOf(0f)

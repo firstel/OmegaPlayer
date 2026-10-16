@@ -31,7 +31,7 @@ internal class PlayerControlActions(
             KeyEvent.KEYCODE_BUTTON_R1 -> { volume.adjust(true); p.volume=1f }
             KeyEvent.KEYCODE_BUTTON_START -> { volume.toggleMute(); p.volume=1f }
             KeyEvent.KEYCODE_BUTTON_SELECT -> vr.rightEye = !vr.rightEye
-            KeyEvent.KEYCODE_BUTTON_THUMBL -> { vr.enabled = !vr.enabled; vr.center() }
+            KeyEvent.KEYCODE_BUTTON_THUMBL -> { vr.toggleSbs() }
             KeyEvent.KEYCODE_BUTTON_THUMBR -> if(vr.motionAvailable) { vr.motion = !vr.motion; vr.center() }
             KeyEvent.KEYCODE_DPAD_LEFT -> vr.look(-15f,0f)
             KeyEvent.KEYCODE_DPAD_RIGHT -> vr.look(15f,0f)

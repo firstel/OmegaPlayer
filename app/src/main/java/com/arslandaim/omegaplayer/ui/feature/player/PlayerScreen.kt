@@ -6,6 +6,7 @@
 
 package com.arslandaim.omegaplayer.ui.feature.player
 
+import kotlinx.coroutines.launch
 import android.app.Activity
 import android.content.Context
 import android.content.pm.ActivityInfo
@@ -168,9 +169,15 @@ fun PlayerScreen(
 
     LaunchedEffect(videoUri, mediaController) {
         val player = mediaController ?: return@LaunchedEffect
-        vr180.startVideo()
+        val detectionRevision = vr180.startVideo()
         val newUri = Uri.parse(videoUri)
         val currentUri = player.currentMediaItem?.playbackUri()
+        launch {
+            val detected = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                detectSbsVideo(context.applicationContext, newUri)
+            }
+            vr180.detectedSbs(detectionRevision, detected)
+        }
         if (currentUri != newUri) {
             playbackError = null
             playbackSpeed = 1f

@@ -24,7 +24,7 @@ class PlaybackHapticsTest {
                 player.setMediaItem(MediaItem.fromUri("file:///haptic-test.mp4"))
                 state.enabled=false; state.motion=true; state.rightEye=true; state.zoomBy(1f)
                 state.startVideo()
-                assertTrue(state.enabled); assertFalse(state.motion); assertFalse(state.rightEye)
+                assertFalse(state.enabled); assertFalse(state.motion); assertFalse(state.rightEye)
                 assertEquals(1f,state.zoom,.001f)
                 actions.perform(KeyEvent.KEYCODE_BUTTON_Y)
                 actions.perform(KeyEvent.KEYCODE_BUTTON_B)
