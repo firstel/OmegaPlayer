@@ -252,3 +252,26 @@ controls and existing landscape, presentation and thumbnail checks. Lint: 0 erro
 70 warnings, 3 hints. Emulator audio rendering does not verify audible sound on a
 physical Thor. APK v2/v3 signatures and 16 KB ZIP alignment verified with the retained
 preview key. SHA-256: `717f9a9e8006bd1f3e1c3dc0673c4a6c4d22adf471ae43aeeced8a3683cb83b7`.
+
+### Watch-history availability preview 1.4.4
+
+The home-screen recent row and full history list probe each saved URI on an IO
+worker before displaying a playback card. Content URIs are opened read-only and
+closed immediately, while local vault paths require an existing readable file.
+Unavailable media, revoked permissions and missing SD cards are hidden without
+deleting the history record. Returning to the screen refreshes availability, and
+tapping a card checks again before navigation to handle removal since the scan.
+Tests cover readable/deleted MediaStore and vault paths, unavailable SAF access,
+filtering missing entries, removing a stale card on tap, and restoring access.
+
+Verified source: `7dbd6648f0de379c63afc0eab54b09b8877ff8e4`.
+Build: https://github.com/firstel/OmegaPlayer/actions/runs/38914634126
+Release: https://github.com/firstel/OmegaPlayer/releases/tag/sdcard-preview-8
+
+APK assembly, all 9 unit tests and all 14 Android tests passed. The initial test
+run found a double-delete in fixture cleanup; cleanup was corrected and the full
+suite passed. Lint: 0 errors, 71 warnings, 3 hints (the additional warning suggests
+a KTX URI parsing convenience function). APK v2/v3 signatures and 16 KB ZIP
+alignment verified using the retained preview key. SHA-256:
+`a56aeffc2c741d49dd220397c1ed390169fa71292eda3eec5e3b846704e51ad0`.
+Physical Thor removable-card behavior remains a device check.
