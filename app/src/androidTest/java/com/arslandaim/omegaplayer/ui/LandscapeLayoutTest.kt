@@ -31,6 +31,11 @@ class LandscapeLayoutTest {
     }
 
     private fun assertKeysVisible() {
+        // Wait for the new Activity's Compose root after native/virtual-display tests.
+        compose.waitUntil(10_000) {
+            compose.onAllNodesWithText("1", useUnmergedTree = true)
+                .fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty()
+        }
         (0..9).forEach { compose.onNodeWithText(it.toString(), useUnmergedTree = true).assertIsDisplayed() }
         compose.onNodeWithContentDescription("Delete last digit").assertIsDisplayed()
         compose.onNodeWithContentDescription("Unlock").assertIsDisplayed()
