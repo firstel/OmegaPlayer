@@ -408,3 +408,25 @@ reviewed and fits the Haptics toggle without another row. Lint: 0 errors,
 77 warnings, 3 hints. APK v2/v3 signatures and 16 KB ZIP alignment verified.
 SHA-256: `90d981b4f3db0e0a7927567438ad11149185258ddfdb21c11dae7072561007dc`.
 Thor D-pad input and actual vibration strength/feel remain device checks.
+
+
+## Automatic SBS detection — 1.5.4 preview
+
+OmegaPlayer SD 1.5.4 preview automatically chooses SBS mode when opening a video.
+
+- Samples one random frame from the middle 80% of the video, away from most opening and closing titles.
+- Compares the two halves at low resolution, allowing a small horizontal offset between eyes. Blank or low-detail frames do not enable SBS.
+- Starts in normal mode while the check runs in the background. Matching halves enable SBS; unrelated halves or an unreadable preview leave it off.
+- The bottom-screen SBS/L3 toggle remains available. A manual choice takes priority over a pending automatic result, and results from a previous video cannot affect a new one.
+
+This is a quick similarity heuristic, so occasional mistakes are possible, particularly with symmetric ordinary footage or unusual stereo layouts. SBS rendering continues to target equirectangular VR180 side-by-side videos.
+
+Install over your existing OmegaPlayer SD without uninstalling to preserve the vault. The preview signing key is unchanged.
+
+Validation: APK assembly, 9 unit tests and 27 Android tests passed. Detection tests cover a decoded SBS video frame, displaced matching eyes, unrelated/blank images, unreadable files, manual override and stale results. Existing playback, compact controls, landscape/PIN and vault checks passed. Lint: 0 errors, 78 warnings, 3 hints. APK signatures and 16 KB ZIP alignment verified. Physical Thor detection accuracy still needs a device check.
+
+Build: https://github.com/firstel/OmegaPlayer/actions/runs/38957865287
+Source: 4b9b48dd5743b17f91f529c6d8cf1063afc42c10
+SHA-256: 7ab4c49eb5ff52509223df62f72bfb7c8ec03fea0122d9f9220e6d9cc5d76158
+
+Release: https://github.com/firstel/OmegaPlayer/releases/tag/sdcard-preview-13
