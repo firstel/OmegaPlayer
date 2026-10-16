@@ -48,6 +48,7 @@ internal class PlaybackControlsPresentation(
     private lateinit var volumeLabel: TextView
     private lateinit var timeline: VideoThumbnailTimeline
     private var scrubbing = false
+    private val vrLabels = mutableListOf<Pair<android.widget.Button, () -> String>>()
     private val deviceVolume = DeviceMediaVolume(activity)
     private val ticker = object : Runnable {
         override fun run() { refresh(); handler.postDelayed(this, 250) }
@@ -57,6 +58,7 @@ internal class PlaybackControlsPresentation(
     }
     private fun refresh() {
         if (!::progress.isInitialized) return
+        vrLabels.forEach { (button, label) -> button.text = label() }
         val duration = playback.duration.coerceAtLeast(0)
         if (!scrubbing) progress.progress = if (duration > 0)
             ((playback.currentPosition.coerceAtLeast(0).toDouble() / duration) * 1000).toInt() else 0
@@ -144,6 +146,7 @@ internal class PlaybackControlsPresentation(
             fun control(parent: LinearLayout, label: () -> String, action: () -> Unit) {
                 parent.addView(android.widget.Button(context).apply {
                     text = label(); isAllCaps = false; minHeight = dp(48)
+                    vrLabels.add(this to label)
                     setOnClickListener { action(); text = label() }
                 }, LinearLayout.LayoutParams(0, -2, 1f))
             }

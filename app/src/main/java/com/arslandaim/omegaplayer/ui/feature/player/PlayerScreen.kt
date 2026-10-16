@@ -339,7 +339,7 @@ fun PlayerScreen(
                     }
                 },
                 onRelease = { playerView ->
-                    if (!currentBackgroundPlay.value) {
+                    if (!currentBackgroundPlay.value || vr180.enabled) {
                         playerView.player = null
                     }
                 },
@@ -457,7 +457,7 @@ fun PlayerScreen(
                 onVideoClosing = { viewModel.savePlaybackProgress() }, onVideoClosed = onBack, vr180 = vr180)
         }
 
-        Row(Modifier.align(Alignment.TopStart).statusBarsPadding().padding(start = 64.dp),
+        if (!isLocked) Row(Modifier.align(Alignment.TopStart).statusBarsPadding().padding(start = 64.dp),
             verticalAlignment = Alignment.CenterVertically) {
             TextButton(onClick = { vr180.enabled = !vr180.enabled; vr180.center() }) {
                 Text(if (vr180.enabled) "VR180 SBS: on" else "VR180 SBS", color = Color.White)
