@@ -290,6 +290,7 @@ fun PlayerScreen(
     var showSeekBackwardAnimation by remember { mutableStateOf(false) }
     var scale by remember { mutableFloatStateOf(1f) }
     var panOffset by remember { mutableStateOf(Offset.Zero) }
+    LaunchedEffect(vr180.recenter) { scale=1f; panOffset=Offset.Zero }
     val transformState = rememberTransformableState { zoomChange, offsetChange, _ ->
         if (!isLocked) {
             scale = (scale * zoomChange).coerceIn(1f, 5f)
@@ -371,12 +372,14 @@ fun PlayerScreen(
                         exit = fadeOut(),
                         resizeMode = SharedTransitionScope.ResizeMode.scaleToBounds()
                     )
-                    .graphicsLayer(
-                        scaleX = scale,
-                        scaleY = scale,
-                        translationX = panOffset.x,
-                        translationY = panOffset.y
-                    )
+                    .graphicsLayer {
+                        val factor=(scale*vr180.zoom).coerceIn(1f,5f)
+                        scaleX=factor; scaleY=factor
+                        val horizontal=size.width*(factor-1f)/2f
+                        val vertical=size.height*(factor-1f)/2f
+                        translationX=(panOffset.x-vr180.yaw/89f*horizontal).coerceIn(-horizontal,horizontal)
+                        translationY=(panOffset.y+vr180.pitch/85f*vertical).coerceIn(-vertical,vertical)
+                    }
                     .transformable(state = transformState)
             )
         }
@@ -476,13 +479,6 @@ fun PlayerScreen(
                 onVideoClosing = { viewModel.savePlaybackProgress() }, onVideoClosed = onBack, vr180 = vr180, gamepad = gamepad, controls = controlActions)
         }
 
-        if (!isLocked) Row(Modifier.align(Alignment.TopStart).statusBarsPadding().padding(start = 64.dp),
-            verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = { vr180.enabled = !vr180.enabled; vr180.center() }) {
-                Text(if (vr180.enabled) "VR180 SBS: on" else "VR180 SBS", color = Color.White)
-            }
-            if (vr180.enabled) TextButton(onClick = { vr180.center() }) { Text("Recenter", color = Color.White) }
-        }
         DisposableEffect(vrView, lifecycleOwner) {
             val target = vrView
             val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->

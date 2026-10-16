@@ -184,8 +184,8 @@ internal class PlaybackControlsPresentation(
         keyButton(look,R.id.bottom_look_up,{ "↑ Look\nD-pad ↑" },"Look up, D-pad up",android.view.KeyEvent.KEYCODE_DPAD_UP)
         keyButton(look,R.id.bottom_look_down,{ "↓ Look\nD-pad ↓" },"Look down, D-pad down",android.view.KeyEvent.KEYCODE_DPAD_DOWN)
         keyButton(look,R.id.bottom_look_right,{ "Look →\nD-pad →" },"Look right, D-pad right",android.view.KeyEvent.KEYCODE_DPAD_RIGHT)
-        button(look,R.id.bottom_zoom_out,{ "− Zoom\nRS ↓" },"Zoom out, right stick down") { if(vr.enabled) vr.zoomBy(-.25f) }
-        button(look,R.id.bottom_zoom_in,{ "+ Zoom\nRS ↑" },"Zoom in, right stick up") { if(vr.enabled) vr.zoomBy(.25f) }
+        button(look,R.id.bottom_zoom_out,{ "− Zoom\nRS ↓" },"Zoom out, right stick down") { vr.zoomBy(-.25f) }
+        button(look,R.id.bottom_zoom_in,{ "+ Zoom\nRS ↑" },"Zoom in, right stick up") { vr.zoomBy(.25f) }
         panel.addView(TextView(context).apply {
             text="Left stick: look   ·   Right stick: zoom"; textSize=11f
             gravity=Gravity.CENTER; setTextColor(android.graphics.Color.LTGRAY)

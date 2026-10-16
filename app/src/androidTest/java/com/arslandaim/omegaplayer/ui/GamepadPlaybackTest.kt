@@ -37,7 +37,7 @@ class GamepadPlaybackTest {
                 override fun isCommandAvailable(command: Int)=true
                 override fun seekTo(positionMs: Long) { position=positionMs; seeks++ }
             }
-            val state=Vr180State().apply { enabled=true }
+            val state=Vr180State().apply { enabled=false }
             var locked=false
             var pulses=0
             val controls=GamepadPlaybackControls(player,state,feedback={ pulses++ }) { locked }
@@ -49,6 +49,8 @@ class GamepadPlaybackTest {
                 assertTrue("Left stick moves yaw", state.yaw>0)
                 assertTrue("Left stick moves pitch", state.pitch>0)
                 assertTrue("Right stick zooms even without range metadata", state.zoom>1f)
+                assertFalse("This movement must work with SBS off",state.enabled)
+                state.enabled=true
                 send(motion()); val yaw=state.yaw; val zoom=state.zoom
                 controls.step(.5f); assertEquals(yaw,state.yaw,.001f); assertEquals(zoom,state.zoom,.001f)
                 assertEquals("Stick movement must not pulse",0,pulses)

@@ -33,10 +33,10 @@ internal class PlayerControlActions(
             KeyEvent.KEYCODE_BUTTON_SELECT -> vr.rightEye = !vr.rightEye
             KeyEvent.KEYCODE_BUTTON_THUMBL -> { vr.enabled = !vr.enabled; vr.center() }
             KeyEvent.KEYCODE_BUTTON_THUMBR -> if(vr.motionAvailable) { vr.motion = !vr.motion; vr.center() }
-            KeyEvent.KEYCODE_DPAD_LEFT -> if(vr.enabled) vr.look(-15f,0f)
-            KeyEvent.KEYCODE_DPAD_RIGHT -> if(vr.enabled) vr.look(15f,0f)
-            KeyEvent.KEYCODE_DPAD_UP -> if(vr.enabled) vr.look(0f,15f)
-            KeyEvent.KEYCODE_DPAD_DOWN -> if(vr.enabled) vr.look(0f,-15f)
+            KeyEvent.KEYCODE_DPAD_LEFT -> vr.look(-15f,0f)
+            KeyEvent.KEYCODE_DPAD_RIGHT -> vr.look(15f,0f)
+            KeyEvent.KEYCODE_DPAD_UP -> vr.look(0f,15f)
+            KeyEvent.KEYCODE_DPAD_DOWN -> vr.look(0f,-15f)
         }
     }
     companion object {

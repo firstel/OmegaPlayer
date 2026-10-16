@@ -24,9 +24,9 @@ internal class Vr180State {
     var motionAvailable = false
     fun startVideo() { enabled = true; motion = false; rightEye = false; center() }
     var recenter by mutableIntStateOf(0)
-    @Volatile var yaw = 0f
-    @Volatile var pitch = 0f
-    @Volatile var zoom = 1f
+    var yaw by mutableFloatStateOf(0f)
+    var pitch by mutableFloatStateOf(0f)
+    var zoom by mutableFloatStateOf(1f)
     fun zoomBy(amount: Float) { zoom = (zoom + amount).coerceIn(1f, 3f) }
     fun look(dx: Float, dy: Float) {
         yaw = (yaw + dx).coerceIn(-89f, 89f)

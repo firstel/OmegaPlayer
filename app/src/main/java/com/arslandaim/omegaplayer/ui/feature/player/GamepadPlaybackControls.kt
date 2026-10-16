@@ -42,7 +42,7 @@ internal class GamepadPlaybackControls(
         analog.fill(false); digital.fill(false); pressed.fill(false)
     }
     internal fun step(seconds: Float) {
-        if (!active() || !view.enabled) { reset(); return }
+        if (!active()) { reset(); return }
         view.look(x * 70f * seconds, -y * 60f * seconds)
         view.zoomBy(-zoom * seconds)
     }
@@ -83,7 +83,6 @@ internal class GamepadPlaybackControls(
             else if(levels[index] <= .3f) analog[index] = false
             trigger(index)
         }
-        if (!view.enabled) return levels.any { it > .3f }
         x = axis(MotionEvent.AXIS_X); y = axis(MotionEvent.AXIS_Y)
         // Some built-in/virtual controllers report values without declaring all axis ranges.
         zoom = if(event.device?.getMotionRange(MotionEvent.AXIS_RZ, event.source) != null ||
