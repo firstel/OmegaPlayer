@@ -33,7 +33,8 @@ internal class PlaybackControlsPresentation(
     display: Display,
     private val playback: Player,
     private val onVideoClosing: () -> Unit = {},
-    private val onVideoClosed: () -> Unit = {}
+    private val onVideoClosed: () -> Unit = {},
+    private val vr180: Vr180State? = null
 ) : Presentation(activity, display, android.R.style.Theme_Material_NoActionBar) {
     private var attached = false
     internal val attachedPlayer: Player? get() = if (attached) playback else null
@@ -138,6 +139,29 @@ internal class PlaybackControlsPresentation(
                 row.addView(this, LinearLayout.LayoutParams(0, -2, 1f))
             }
         }
+        vr180?.let { vr ->
+            val vrRow = row()
+            fun control(parent: LinearLayout, label: () -> String, action: () -> Unit) {
+                parent.addView(android.widget.Button(context).apply {
+                    text = label(); isAllCaps = false; minHeight = dp(48)
+                    setOnClickListener { action(); text = label() }
+                }, LinearLayout.LayoutParams(0, -2, 1f))
+            }
+            control(vrRow, { if (vr.enabled) "VR180 SBS: on" else "VR180 SBS: off" }) { vr.enabled = !vr.enabled; vr.center() }
+            control(vrRow, { if (vr.rightEye) "Right eye" else "Left eye" }) { vr.rightEye = !vr.rightEye }
+            control(vrRow, { "Recenter" }) { vr.center() }
+            val lookRow = row()
+            control(lookRow, { "Look left" }) { vr.look(-15f, 0f) }
+            control(lookRow, { "Look right" }) { vr.look(15f, 0f) }
+            control(lookRow, { "Look up" }) { vr.look(0f, 15f) }
+            control(lookRow, { "Look down" }) { vr.look(0f, -15f) }
+            val motionSensor = context.getSystemService(android.hardware.SensorManager::class.java)
+            val hasMotion = motionSensor.getDefaultSensor(android.hardware.Sensor.TYPE_GAME_ROTATION_VECTOR) != null ||
+                motionSensor.getDefaultSensor(android.hardware.Sensor.TYPE_ROTATION_VECTOR) != null
+            control(row(), { if (!hasMotion) "Motion unavailable · use look buttons" else if (vr.motion) "Motion: on" else "Motion: off" }) {
+                if (hasMotion) { vr.motion = !vr.motion; vr.center() }
+            }
+        }
         val transport = row()
         button(transport, R.id.bottom_seek_back, R.string.bottom_back_ten) {
             playback.seekTo(skipPosition(playback.currentPosition, playback.duration, -10_000))
@@ -217,7 +241,7 @@ internal fun skipPosition(position: Long, duration: Long, offset: Long): Long =
 @Composable
 internal fun SecondScreenControlsButton(
     player: Player?, locked: Boolean, videoUri: String,
-    onVideoClosing: () -> Unit, onVideoClosed: () -> Unit
+    onVideoClosing: () -> Unit, onVideoClosed: () -> Unit, vr180: Vr180State? = null
 ) {
     val context = LocalContext.current
     val activity = context as? Activity ?: return
@@ -237,7 +261,7 @@ internal fun SecondScreenControlsButton(
         manager.registerDisplayListener(listener, Handler(Looper.getMainLooper()))
         onDispose { manager.unregisterDisplayListener(listener) }
     }
-    DisposableEffect(enabled, locked, player, revision, lifecycle) {
+    DisposableEffect(enabled, locked, player, revision, lifecycle, vr180) {
         var presentation: PlaybackControlsPresentation? = null
         fun hide() { presentation?.dismiss(); presentation = null; active = false }
         fun show() {
@@ -246,7 +270,7 @@ internal fun SecondScreenControlsButton(
                 .firstOrNull { it.displayId != activity.window.decorView.display?.displayId } ?: return
             try {
                 presentation = PlaybackControlsPresentation(activity, display, player,
-                    onVideoClosing = { currentClosing() }, onVideoClosed = { currentClosed() }).also { panel ->
+                    onVideoClosing = { currentClosing() }, onVideoClosed = { currentClosed() }, vr180 = vr180).also { panel ->
                     panel.setOnCancelListener { enabled = false }
                     panel.setOnDismissListener { active = false }
                     panel.show()

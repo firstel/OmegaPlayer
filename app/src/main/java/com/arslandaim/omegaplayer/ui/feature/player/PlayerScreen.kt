@@ -121,6 +121,8 @@ fun PlayerScreen(
     var brightness by remember { mutableFloatStateOf(0.5f) }
     var isControlsVisible by remember { mutableStateOf(true) }
     var isLocked by remember { mutableStateOf(false) }
+    val vr180 = remember(videoUri) { Vr180State() }
+    var vrView by remember { mutableStateOf<Vr180View?>(null) }
     var playbackError by remember { mutableStateOf<String?>(null) }
 
     // Back handler to handle custom navigation and lock state
@@ -309,7 +311,17 @@ fun PlayerScreen(
     val videoName = videoUri.substringAfterLast("/").substringBeforeLast(".")
 
     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
-        with(sharedTransitionScope) {
+        if (vr180.enabled) {
+            AndroidView(factory = { ctx -> Vr180View(ctx, vr180).also { vrView = it } },
+                update = { it.bind(mediaController) },
+                onRelease = { it.close(); if (vrView === it) vrView = null },
+                modifier = Modifier.fillMaxSize().pointerInput(vr180, isLocked) {
+                    if (!isLocked) detectDragGestures { change, drag ->
+                        change.consume()
+                        vr180.look(-drag.x / size.width * 100f, drag.y / size.height * 80f)
+                    }
+                })
+        } else with(sharedTransitionScope) {
             AndroidView(
                 factory = { ctx ->
                     val view = LayoutInflater.from(ctx).inflate(R.layout.player_view, null) as PlayerView
@@ -350,8 +362,8 @@ fun PlayerScreen(
             )
         }
 
-        // Gesture Overlay
-        Box(
+        // The VR surface uses drag-to-look instead of seek/volume gestures.
+        if (!vr180.enabled) Box(
             modifier = Modifier
                 .fillMaxSize()
                 .pointerInput(isLocked) {
@@ -442,7 +454,24 @@ fun PlayerScreen(
             .then(if (isControlsVisible && !isLocked) Modifier else Modifier.size(0.dp))
             .background(Color.Black.copy(alpha = 0.65f), RoundedCornerShape(20.dp))) {
             SecondScreenControlsButton(mediaController, isLocked, videoUri,
-                onVideoClosing = { viewModel.savePlaybackProgress() }, onVideoClosed = onBack)
+                onVideoClosing = { viewModel.savePlaybackProgress() }, onVideoClosed = onBack, vr180 = vr180)
+        }
+
+        Row(Modifier.align(Alignment.TopStart).statusBarsPadding().padding(start = 64.dp),
+            verticalAlignment = Alignment.CenterVertically) {
+            TextButton(onClick = { vr180.enabled = !vr180.enabled; vr180.center() }) {
+                Text(if (vr180.enabled) "VR180 SBS: on" else "VR180 SBS", color = Color.White)
+            }
+            if (vr180.enabled) TextButton(onClick = { vr180.center() }) { Text("Recenter", color = Color.White) }
+        }
+        DisposableEffect(vrView, lifecycleOwner) {
+            val target = vrView
+            val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+                if (event == androidx.lifecycle.Lifecycle.Event.ON_STOP) target?.onPause()
+                if (event == androidx.lifecycle.Lifecycle.Event.ON_START) target?.onResume()
+            }
+            lifecycleOwner.lifecycle.addObserver(observer)
+            onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
         }
 
         // Lock Icon HUD
