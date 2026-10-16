@@ -45,8 +45,6 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -88,7 +86,6 @@ fun PlayerScreen(
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
-    val haptic = LocalHapticFeedback.current
     val view = LocalView.current
     val activity = context as? Activity
     val hazeState = remember { HazeState() }
@@ -396,7 +393,7 @@ fun PlayerScreen(
                             onTap = { isControlsVisible = !isControlsVisible },
                             onDoubleTap = { offset ->
                                 val player = mediaController ?: return@detectTapGestures
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                feedback.pulse()
                                 if (offset.x < size.width / 2) {
                                     player.seekBack()
                                     showSeekBackwardAnimation = true
@@ -415,7 +412,7 @@ fun PlayerScreen(
                                     showPlayPausePulse = true
                                 }
                                 pulseTrigger++
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                feedback.pulse()
                             }
                         )
                     }
@@ -430,7 +427,7 @@ fun PlayerScreen(
                             onDragEnd = {
                                 if (isSeekHUDVisible) {
                                     mediaController?.let { it.seekTo(it.currentPosition + seekOffsetHUD) }
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    feedback.pulse()
                                 }
                                 isSeekHUDVisible = false
                                 isVolumeVisible = false
@@ -444,14 +441,14 @@ fun PlayerScreen(
                                     val oldOffset = seekOffsetHUD
                                     seekOffsetHUD += (dragAmount.x * 100).toLong()
                                     if (abs(seekOffsetHUD / 5000) != abs(oldOffset / 5000)) {
-                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        feedback.pulse()
                                     }
                                 } else if (!isSeekHUDVisible) {
                                     if (change.position.x < width / 2) {
                                         val oldBrightness = brightness
                                         brightness = (brightness - dragAmount.y / height).coerceIn(0f, 1f)
                                         if (abs(brightness - oldBrightness) > 0.05f) {
-                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                            feedback.pulse()
                                         }
                                         setBrightness(context, brightness)
                                         isBrightnessVisible = true
@@ -459,7 +456,7 @@ fun PlayerScreen(
                                         val oldVolume = volume
                                         volume = (volume - dragAmount.y / height).coerceIn(0f, 1f)
                                         if (abs(volume - oldVolume) > 0.05f) {
-                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                            feedback.pulse()
                                         }
                                         deviceVolume.setFraction(volume)
                                         mediaController?.volume = 1f

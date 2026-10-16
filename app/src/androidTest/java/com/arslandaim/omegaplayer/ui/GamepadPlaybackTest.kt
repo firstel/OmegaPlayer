@@ -39,7 +39,8 @@ class GamepadPlaybackTest {
             }
             val state=Vr180State().apply { enabled=true }
             var locked=false
-            val controls=GamepadPlaybackControls(player,state) { locked }
+            var pulses=0
+            val controls=GamepadPlaybackControls(player,state,feedback={ pulses++ }) { locked }
             fun send(event: MotionEvent) { try { assertTrue(controls.motion(event)) } finally { event.recycle() } }
             try {
                 send(motion(x=.1f,y=-.1f,rz=.1f)); controls.step(1f)
@@ -50,9 +51,11 @@ class GamepadPlaybackTest {
                 assertTrue("Right stick zooms even without range metadata", state.zoom>1f)
                 send(motion()); val yaw=state.yaw; val zoom=state.zoom
                 controls.step(.5f); assertEquals(yaw,state.yaw,.001f); assertEquals(zoom,state.zoom,.001f)
-                send(motion(rt=1f)); assertEquals(40000L,position)
+                assertEquals("Stick movement must not pulse",0,pulses)
+                send(motion(rt=1f)); assertEquals(40000L,position); assertEquals(1,pulses)
                 send(motion(rt=1f)); assertEquals(1,seeks)
                 controls.key(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BUTTON_R2))
+                assertEquals("One pulse per held trigger, including duplicate key reports",1,pulses)
                 assertEquals(1,seeks) // Same physical press reported as both analog and digital.
                 controls.key(KeyEvent(KeyEvent.ACTION_UP,KeyEvent.KEYCODE_BUTTON_R2)); send(motion())
                 controls.key(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BUTTON_L2))
