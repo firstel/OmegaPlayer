@@ -50,7 +50,9 @@ fun HistoryScreen(
     onBack: () -> Unit,
     onMediaClick: (String, String) -> Unit
 ) {
-    val history by viewModel.fullHistory.collectAsStateWithLifecycle()
+    val savedHistory by viewModel.fullHistory.collectAsStateWithLifecycle()
+    val access = rememberHistoryAccess(savedHistory)
+    val history = access.items
     val isPaused by viewModel.isHistoryPaused.collectAsStateWithLifecycle()
     var showClearConfirm by remember { mutableStateOf(false) }
 
@@ -125,8 +127,10 @@ fun HistoryScreen(
                     HistoryItem(
                         item = item,
                         onClick = {
-                            val encodedUri = URLEncoder.encode(item.uri, StandardCharsets.UTF_8.toString())
-                            onMediaClick(encodedUri, item.mediaType)
+                            access.open(item) {
+                                val encodedUri = URLEncoder.encode(item.uri, StandardCharsets.UTF_8.toString())
+                                onMediaClick(encodedUri, item.mediaType)
+                            }
                         }
                     )
                 }

@@ -195,6 +195,8 @@ fun RecentPlaybackSection(
     onAudioClick: (String) -> Unit,
     onViewAllClick: () -> Unit
 ) {
+    val access = com.arslandaim.omegaplayer.ui.feature.library.rememberHistoryAccess(recentPlayback)
+    if (access.items.isEmpty()) return
     Column(modifier = Modifier.padding(bottom = 8.dp)) {
         Row(
             modifier = Modifier
@@ -216,13 +218,15 @@ fun RecentPlaybackSection(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             contentPadding = PaddingValues(horizontal = 4.dp)
         ) {
-            items(recentPlayback, key = { it.uri }) { item ->
+            items(access.items, key = { it.uri }) { item ->
                 RecentPlaybackItem(
                     item = item,
                     onClick = {
-                        val encodedUri = URLEncoder.encode(item.uri, StandardCharsets.UTF_8.toString())
-                        if (item.mediaType == "video") onVideoClick(encodedUri)
-                        else onAudioClick(encodedUri)
+                        access.open(item) {
+                            val encodedUri = URLEncoder.encode(item.uri, StandardCharsets.UTF_8.toString())
+                            if (item.mediaType == "video") onVideoClick(encodedUri)
+                            else onAudioClick(encodedUri)
+                        }
                     }
                 )
             }
