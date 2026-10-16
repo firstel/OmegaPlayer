@@ -123,6 +123,13 @@ fun PlayerScreen(
     var isLocked by remember { mutableStateOf(false) }
     val vr180 = remember(videoUri) { Vr180State() }
     var vrView by remember { mutableStateOf<Vr180View?>(null) }
+    val currentLocked by rememberUpdatedState(isLocked)
+    val gamepad = remember(mediaController, vr180) { GamepadPlaybackControls(mediaController, vr180) { currentLocked } }
+    DisposableEffect(gamepad, activity) {
+        val host = activity as? com.arslandaim.omegaplayer.MainActivity
+        host?.gamepadControls = gamepad
+        onDispose { gamepad.reset(); if (host?.gamepadControls === gamepad) host.gamepadControls = null }
+    }
     var playbackError by remember { mutableStateOf<String?>(null) }
 
     // Back handler to handle custom navigation and lock state
@@ -456,7 +463,7 @@ fun PlayerScreen(
             .then(if (isControlsVisible && !isLocked) Modifier else Modifier.size(0.dp))
             .background(Color.Black.copy(alpha = 0.65f), RoundedCornerShape(20.dp))) {
             SecondScreenControlsButton(mediaController, isLocked, videoUri,
-                onVideoClosing = { viewModel.savePlaybackProgress() }, onVideoClosed = onBack, vr180 = vr180)
+                onVideoClosing = { viewModel.savePlaybackProgress() }, onVideoClosed = onBack, vr180 = vr180, gamepad = gamepad)
         }
 
         if (!isLocked) Row(Modifier.align(Alignment.TopStart).statusBarsPadding().padding(start = 64.dp),

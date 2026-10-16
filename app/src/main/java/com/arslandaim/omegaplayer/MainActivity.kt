@@ -80,6 +80,13 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalSharedTransitionApi::class)
 @AndroidEntryPoint
 class MainActivity : FragmentActivity() {
+    internal var gamepadControls: com.arslandaim.omegaplayer.ui.feature.player.GamepadPlaybackControls? = null
+    override fun dispatchGenericMotionEvent(event: android.view.MotionEvent): Boolean =
+        gamepadControls?.motion(event) == true || super.dispatchGenericMotionEvent(event)
+    override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean =
+        gamepadControls?.key(event) == true || super.dispatchKeyEvent(event)
+    override fun onStop() { gamepadControls?.reset(); super.onStop() }
+
     private var isPlayerActive = false
 
     @Inject

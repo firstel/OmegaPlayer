@@ -34,7 +34,8 @@ internal class PlaybackControlsPresentation(
     private val playback: Player,
     private val onVideoClosing: () -> Unit = {},
     private val onVideoClosed: () -> Unit = {},
-    private val vr180: Vr180State? = null
+    private val vr180: Vr180State? = null,
+    private val gamepad: GamepadPlaybackControls? = null
 ) : Presentation(activity, display, android.R.style.Theme_Material_NoActionBar) {
     private var attached = false
     internal val attachedPlayer: Player? get() = if (attached) playback else null
@@ -142,6 +143,10 @@ internal class PlaybackControlsPresentation(
             }
         }
         vr180?.let { vr ->
+            panel.addView(TextView(context).apply {
+                text = "Left stick: look · Right stick ↑/↓: zoom · L2/R2: −/+10 sec"
+                setTextColor(android.graphics.Color.LTGRAY); textSize = 13f; gravity = Gravity.CENTER
+            })
             val vrRow = row()
             fun control(parent: LinearLayout, label: () -> String, action: () -> Unit) {
                 parent.addView(android.widget.Button(context).apply {
@@ -227,7 +232,12 @@ internal class PlaybackControlsPresentation(
         playback.addListener(listener)
         handler.post(ticker)
     }
+    override fun dispatchGenericMotionEvent(event: android.view.MotionEvent): Boolean =
+        gamepad?.motion(event) == true || super.dispatchGenericMotionEvent(event)
+    override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean =
+        gamepad?.key(event) == true || super.dispatchKeyEvent(event)
     override fun onStop() {
+        gamepad?.reset()
         handler.removeCallbacks(ticker)
         playback.removeListener(listener)
         attached = false
@@ -244,7 +254,7 @@ internal fun skipPosition(position: Long, duration: Long, offset: Long): Long =
 @Composable
 internal fun SecondScreenControlsButton(
     player: Player?, locked: Boolean, videoUri: String,
-    onVideoClosing: () -> Unit, onVideoClosed: () -> Unit, vr180: Vr180State? = null
+    onVideoClosing: () -> Unit, onVideoClosed: () -> Unit, vr180: Vr180State? = null, gamepad: GamepadPlaybackControls? = null
 ) {
     val context = LocalContext.current
     val activity = context as? Activity ?: return
@@ -264,7 +274,7 @@ internal fun SecondScreenControlsButton(
         manager.registerDisplayListener(listener, Handler(Looper.getMainLooper()))
         onDispose { manager.unregisterDisplayListener(listener) }
     }
-    DisposableEffect(enabled, locked, player, revision, lifecycle, vr180) {
+    DisposableEffect(enabled, locked, player, revision, lifecycle, vr180, gamepad) {
         var presentation: PlaybackControlsPresentation? = null
         fun hide() { presentation?.dismiss(); presentation = null; active = false }
         fun show() {
@@ -273,7 +283,7 @@ internal fun SecondScreenControlsButton(
                 .firstOrNull { it.displayId != activity.window.decorView.display?.displayId } ?: return
             try {
                 presentation = PlaybackControlsPresentation(activity, display, player,
-                    onVideoClosing = { currentClosing() }, onVideoClosed = { currentClosed() }, vr180 = vr180).also { panel ->
+                    onVideoClosing = { currentClosing() }, onVideoClosed = { currentClosed() }, vr180 = vr180, gamepad = gamepad).also { panel ->
                     panel.setOnCancelListener { enabled = false }
                     panel.setOnDismissListener { active = false }
                     panel.show()

@@ -24,11 +24,13 @@ internal class Vr180State {
     var recenter by mutableIntStateOf(0)
     @Volatile var yaw = 0f
     @Volatile var pitch = 0f
+    @Volatile var zoom = 1f
+    fun zoomBy(amount: Float) { zoom = (zoom + amount).coerceIn(1f, 3f) }
     fun look(dx: Float, dy: Float) {
         yaw = (yaw + dx).coerceIn(-89f, 89f)
         pitch = (pitch + dy).coerceIn(-85f, 85f)
     }
-    fun center() { yaw = 0f; pitch = 0f; recenter++ }
+    fun center() { yaw = 0f; pitch = 0f; zoom = 1f; recenter++ }
 }
 
 /** Standard equirectangular VR180 SBS: one eye occupies half the source width. */
@@ -119,10 +121,10 @@ internal class Vr180View(context: Context, private val state: Vr180State) : GLSu
             precision highp float;
             uniform samplerExternalOES video;
             uniform mat4 texMatrix;
-            uniform float aspect, yaw, pitch, eye;
+            uniform float aspect, yaw, pitch, eye, zoom;
             varying vec2 p;
             void main(){
-                vec3 d=normalize(vec3(p.x*aspect*.7,p.y*.7,-1.));
+                vec3 d=normalize(vec3(p.x*aspect*.7/zoom,p.y*.7/zoom,-1.));
                 float cp=cos(pitch),sp=sin(pitch),cy=cos(yaw),sy=sin(yaw);
                 d=vec3(d.x,cp*d.y-sp*d.z,sp*d.y+cp*d.z);
                 d=vec3(cy*d.x-sy*d.z,d.y,sy*d.x+cy*d.z);
@@ -164,6 +166,7 @@ internal class Vr180View(context: Context, private val state: Vr180State) : GLSu
         glUniform1i(glGetUniformLocation(program,"video"),0)
         glUniformMatrix4fv(glGetUniformLocation(program,"texMatrix"),1,false,transform,0)
         glUniform1f(glGetUniformLocation(program,"aspect"),aspect)
+        glUniform1f(glGetUniformLocation(program,"zoom"),state.zoom)
         glUniform1f(glGetUniformLocation(program,"yaw"),Math.toRadians((state.yaw+sensorYaw).coerceIn(-89f,89f).toDouble()).toFloat())
         glUniform1f(glGetUniformLocation(program,"pitch"),Math.toRadians((state.pitch+sensorPitch).coerceIn(-85f,85f).toDouble()).toFloat())
         glUniform1f(glGetUniformLocation(program,"eye"),if(eye)1f else 0f)
