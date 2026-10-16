@@ -7,11 +7,15 @@ import androidx.media3.common.Player
 internal class PlayerControlActions(
     private val player: Player?, private val volume: DeviceMediaVolume,
     private val vr: Vr180State,
+    private val feedback: (com.arslandaim.omegaplayer.ui.common.Pulse) -> Unit = {},
     private val onClosing: () -> Unit = {}, private val onClosed: () -> Unit = {}
 ) {
     private var closed = false
     fun perform(key: Int) {
         val p = player ?: return
+        if (key !in keys || (key == KeyEvent.KEYCODE_BUTTON_X && closed)) return
+        feedback(if (key == KeyEvent.KEYCODE_BUTTON_Y) com.arslandaim.omegaplayer.ui.common.Pulse.RECENTER
+            else com.arslandaim.omegaplayer.ui.common.Pulse.TAP)
         when(key) {
             KeyEvent.KEYCODE_BUTTON_A -> {
                 if(p.playWhenReady && p.playbackState != Player.STATE_ENDED) p.pause()

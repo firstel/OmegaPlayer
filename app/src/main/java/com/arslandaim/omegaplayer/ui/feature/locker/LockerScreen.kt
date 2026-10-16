@@ -158,8 +158,10 @@ fun LockerAuthScreen(
 @Composable
 fun NumButton(label: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val isAction = label == "Back" || label == "OK"
+    val context = LocalContext.current
+    val feedback = remember(context) { com.arslandaim.omegaplayer.ui.common.PlaybackHaptics(context) }
     Surface(
-        onClick = onClick,
+        onClick = { feedback.pulse(); onClick() },
         modifier = modifier.aspectRatio(1f),
         shape = CircleShape,
         color = if (isAction) MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f) 

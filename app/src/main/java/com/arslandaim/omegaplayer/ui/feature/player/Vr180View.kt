@@ -18,11 +18,11 @@ import javax.microedition.khronos.opengles.GL10
 import kotlin.math.*
 
 internal class Vr180State {
-    var enabled by mutableStateOf(false)
+    var enabled by mutableStateOf(true)
     var rightEye by mutableStateOf(false)
     var motion by mutableStateOf(false)
     var motionAvailable = false
-    fun startVideo() { enabled = false; motion = false; rightEye = false; center() }
+    fun startVideo() { enabled = true; motion = false; rightEye = false; center() }
     var recenter by mutableIntStateOf(0)
     @Volatile var yaw = 0f
     @Volatile var pitch = 0f

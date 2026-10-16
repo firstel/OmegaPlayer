@@ -20,4 +20,5 @@
     <item name="bottom_look_right" type="id" />
     <item name="bottom_zoom_out" type="id" />
     <item name="bottom_zoom_in" type="id" />
+    <item name="bottom_haptics" type="id" />
 </resources>

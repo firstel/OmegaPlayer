@@ -15,6 +15,7 @@ internal class GamepadPlaybackControls(
     private val player: Player?,
     private val view: Vr180State,
     private val action: (Int) -> Unit = {},
+    private val feedback: () -> Unit = {},
     private val locked: () -> Boolean
 ) {
     private val handler = Handler(Looper.getMainLooper())
@@ -49,6 +50,7 @@ internal class GamepadPlaybackControls(
         val down = analog[index] || digital[index]
         if (down && !pressed[index] && active() && player!!.isCommandAvailable(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)) {
             player.seekTo(skipPosition(player.currentPosition, player.duration, if(index == 0) -10000 else 10000))
+            feedback()
         }
         pressed[index] = down
     }

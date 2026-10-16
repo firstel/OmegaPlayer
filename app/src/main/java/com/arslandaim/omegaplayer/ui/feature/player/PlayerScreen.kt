@@ -125,15 +125,17 @@ fun PlayerScreen(
     var vrView by remember { mutableStateOf<Vr180View?>(null) }
     val currentLocked by rememberUpdatedState(isLocked)
     val currentBack by rememberUpdatedState(onBack)
+    val feedback = remember(context) { com.arslandaim.omegaplayer.ui.common.PlaybackHaptics(context) }
     val controlActions = remember(mediaController, vr180) {
         val sensors = context.getSystemService(android.hardware.SensorManager::class.java)
         vr180.motionAvailable = sensors.getDefaultSensor(android.hardware.Sensor.TYPE_GAME_ROTATION_VECTOR) != null ||
             sensors.getDefaultSensor(android.hardware.Sensor.TYPE_ROTATION_VECTOR) != null
-        PlayerControlActions(mediaController, deviceVolume, vr180,
+        PlayerControlActions(mediaController, deviceVolume, vr180, feedback = { feedback.pulse(it) },
             onClosing = { viewModel.savePlaybackProgress() }, onClosed = { currentBack() })
     }
     val gamepad = remember(mediaController, vr180) {
-        GamepadPlaybackControls(mediaController, vr180, action = { controlActions.perform(it) }) { currentLocked }
+        GamepadPlaybackControls(mediaController, vr180, action = { controlActions.perform(it) },
+            feedback = { feedback.pulse(com.arslandaim.omegaplayer.ui.common.Pulse.SKIP) }) { currentLocked }
     }
     DisposableEffect(gamepad, activity) {
         val host = activity as? com.arslandaim.omegaplayer.MainActivity

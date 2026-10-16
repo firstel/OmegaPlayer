@@ -39,7 +39,7 @@ class CompactControlsTest {
                 InstrumentationRegistry.getInstrumentation().waitForIdleSync()
                 scenario.onActivity {
                     val ids=listOf(R.id.bottom_seek_back,R.id.bottom_play_pause,R.id.bottom_seek_forward,R.id.bottom_stop,R.id.bottom_close,
-                        R.id.bottom_volume_down,R.id.bottom_mute,R.id.bottom_volume_up,R.id.bottom_speed,R.id.bottom_vr,R.id.bottom_eye,
+                        R.id.bottom_volume_down,R.id.bottom_mute,R.id.bottom_volume_up,R.id.bottom_speed,R.id.bottom_haptics,R.id.bottom_vr,R.id.bottom_eye,
                         R.id.bottom_recenter,R.id.bottom_motion,R.id.bottom_look_left,R.id.bottom_look_up,R.id.bottom_look_down,
                         R.id.bottom_look_right,R.id.bottom_zoom_in,R.id.bottom_zoom_out)
                     ids.forEach { id ->
@@ -62,13 +62,13 @@ class CompactControlsTest {
                         })!!
                     resolver.openOutputStream(capture)!!.use { image.compress(Bitmap.CompressFormat.PNG,100,it) }
                     image.recycle()
-                    assertFalse(state.enabled)
-                    panel.dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BUTTON_THUMBL))
                     assertTrue(state.enabled)
+                    panel.dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BUTTON_THUMBL))
+                    assertFalse(state.enabled)
                     state.zoomBy(1f); state.look(20f,20f)
                     panel.dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BUTTON_Y))
                     assertEquals(1f,state.zoom,.001f); assertEquals(0f,state.yaw,.001f)
-                    state.startVideo(); assertFalse(state.enabled); assertFalse(state.motion)
+                    state.startVideo(); assertTrue(state.enabled); assertFalse(state.motion)
                     panel.dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BUTTON_X))
                     assertTrue(saved); assertTrue(closed); assertEquals(0,player.mediaItemCount)
                     assertFalse(panel.isShowing)

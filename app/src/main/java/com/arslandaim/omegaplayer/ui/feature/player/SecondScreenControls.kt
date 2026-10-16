@@ -52,6 +52,7 @@ internal class PlaybackControlsPresentation(
     private var scrubbing = false
     private val vrLabels = mutableListOf<Pair<android.widget.Button, () -> String>>()
     private val deviceVolume = DeviceMediaVolume(activity)
+    private val feedback = com.arslandaim.omegaplayer.ui.common.PlaybackHaptics(activity)
     private val ticker = object : Runnable {
         override fun run() { refresh(); handler.postDelayed(this, 250) }
     }
@@ -97,7 +98,8 @@ internal class PlaybackControlsPresentation(
         val sensors = context.getSystemService(android.hardware.SensorManager::class.java)
         vr.motionAvailable = sensors.getDefaultSensor(android.hardware.Sensor.TYPE_GAME_ROTATION_VECTOR) != null ||
             sensors.getDefaultSensor(android.hardware.Sensor.TYPE_ROTATION_VECTOR) != null
-        val actions = controls ?: PlayerControlActions(playback, deviceVolume, vr, onVideoClosing) { dismiss(); onVideoClosed() }
+        val actions = controls ?: PlayerControlActions(playback, deviceVolume, vr,
+            feedback = { feedback.pulse(it) }, onClosing = onVideoClosing) { dismiss(); onVideoClosed() }
         val panel = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(8), dp(4), dp(8), dp(4))
@@ -136,7 +138,7 @@ internal class PlaybackControlsPresentation(
             orientation=LinearLayout.HORIZONTAL
             panel.addView(this,LinearLayout.LayoutParams(-1,0,1f))
         }
-        fun button(parent: LinearLayout,id: Int,label: ()->String,description: String,action: ()->Unit): android.widget.Button {
+        fun button(parent: LinearLayout,id: Int,label: ()->String,description: String,pulse: com.arslandaim.omegaplayer.ui.common.Pulse? = com.arslandaim.omegaplayer.ui.common.Pulse.TAP,action: ()->Unit): android.widget.Button {
             return android.widget.Button(context).apply {
                 this.id=id; text=label(); contentDescription=description
                 isAllCaps=false; textSize=12f; gravity=Gravity.CENTER
@@ -144,18 +146,18 @@ internal class PlaybackControlsPresentation(
                 setPadding(dp(2),0,dp(2),0); maxLines=2
                 ellipsize=android.text.TextUtils.TruncateAt.END
                 vrLabels.add(this to label)
-                setOnClickListener { action(); refresh() }
+                setOnClickListener { action(); pulse?.let { feedback.pulse(it) }; refresh() }
                 parent.addView(this,LinearLayout.LayoutParams(0,-1,1f))
             }
         }
         fun keyButton(parent: LinearLayout,id: Int,label: ()->String,description: String,key: Int)=
-            button(parent,id,label,description) { actions.perform(key) }
+            button(parent,id,label,description,pulse=null) { actions.perform(key) }
         val transport=row()
-        button(transport,R.id.bottom_seek_back,{ "◀ −10s\nL2" },"Back 10 seconds, L2") {
+        button(transport,R.id.bottom_seek_back,{ "◀ −10s\nL2" },"Back 10 seconds, L2",pulse=com.arslandaim.omegaplayer.ui.common.Pulse.SKIP) {
             playback.seekTo(skipPosition(playback.currentPosition,playback.duration,-10000))
         }
         play=keyButton(transport,R.id.bottom_play_pause,{ if(playback.playWhenReady && playback.playbackState != Player.STATE_ENDED) "Ⅱ Pause\nA" else "▶ Play\nA" },"Play or pause, A",android.view.KeyEvent.KEYCODE_BUTTON_A)
-        button(transport,R.id.bottom_seek_forward,{ "+10s ▶\nR2" },"Forward 10 seconds, R2") {
+        button(transport,R.id.bottom_seek_forward,{ "+10s ▶\nR2" },"Forward 10 seconds, R2",pulse=com.arslandaim.omegaplayer.ui.common.Pulse.SKIP) {
             playback.seekTo(skipPosition(playback.currentPosition,playback.duration,10000))
         }
         keyButton(transport,R.id.bottom_stop,{ "■ Stop\nB" },"Stop video, B",android.view.KeyEvent.KEYCODE_BUTTON_B)
@@ -167,6 +169,10 @@ internal class PlaybackControlsPresentation(
         speed=button(audio,R.id.bottom_speed,{ context.getString(R.string.bottom_speed,playback.playbackParameters.speed)+"\nTouch" },"Playback speed, touch") {
             val speeds=listOf(.5f,.75f,1f,1.25f,1.5f,2f)
             playback.setPlaybackSpeed(speeds.firstOrNull { it>playback.playbackParameters.speed+.01f } ?: speeds.first())
+        }
+        button(audio,R.id.bottom_haptics,{ if(feedback.enabled) "Haptics On\nTouch" else "Haptics Off\nTouch" },"Toggle playback and PIN keypad haptics",pulse=null) {
+            feedback.enabled = !feedback.enabled
+            if(feedback.enabled) feedback.pulse()
         }
         val vrRow=row()
         keyButton(vrRow,R.id.bottom_vr,{ if(vr.enabled) "SBS On\nL3" else "SBS Off\nL3" },"Toggle VR180 SBS, left stick click L3",android.view.KeyEvent.KEYCODE_BUTTON_THUMBL)
