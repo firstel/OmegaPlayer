@@ -308,3 +308,29 @@ Lint: 0 errors, 72 warnings, 3 hints. APK v2/v3 signatures and 16 KB ZIP alignme
 verified with the retained preview key. SHA-256:
 `ab4a06772b6803bad9c5f891b1d10f5ca48437f4822f5b5084bbb9b686387687`.
 Actual Thor sensor axes and high-resolution video performance remain device checks.
+
+### Thumbstick/trigger preview 1.5.1
+
+A shared main-thread controller handler receives joystick and L2/R2 key events
+from both the player activity and the secondary Presentation. Left X/Y controls
+VR look; right RZ (or RY on devices exposing that range) controls 1×–3× zoom.
+A minimum 18% dead zone respects larger device flat ranges. Movement is integrated
+with elapsed time rather than event count and stops on neutral input, player lock,
+activity stop, Presentation stop or disposal. Recenter resets zoom to 1×.
+L2/R2 analog axes (including BRAKE/GAS aliases) and digital button events share
+press state, preventing double seeks or repeated skips while held. Trigger seeks
+are clamped to duration and are also available during ordinary video playback.
+
+Verified source: `6b0da3624cc3e0c00cd21ae436839b55e8533454`.
+Build: https://github.com/firstel/OmegaPlayer/actions/runs/38934626799
+Release: https://github.com/firstel/OmegaPlayer/releases/tag/sdcard-preview-10
+
+APK assembly, all 9 unit tests and all 17 Android tests passed. Controller checks
+cover real MotionEvent axes, dead zone, yaw/pitch/zoom, analog/digital trigger
+coalescing, hold behavior, seek limits and player lock. Prior VR eye/orientation,
+playback, history and layout checks passed. The library test fixture now publishes
+a valid MP4 and tolerates an already-unavailable cleanup row. Lint: 0 errors,
+73 warnings, 3 hints. APK v2/v3 signatures and 16 KB ZIP alignment verified using
+the retained preview key. SHA-256:
+`80920e5fcf20e88ac94c464f77fe8a0ae8370d720ace9b1edb8beca3e59fb2f2`.
+Actual Thor built-in controller mapping remains a physical-device check.
