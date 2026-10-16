@@ -334,3 +334,36 @@ a valid MP4 and tolerates an already-unavailable cleanup row. Lint: 0 errors,
 the retained preview key. SHA-256:
 `80920e5fcf20e88ac94c464f77fe8a0ae8370d720ace9b1edb8beca3e59fb2f2`.
 Actual Thor built-in controller mapping remains a physical-device check.
+
+### Compact controls, explicit defaults and vault deletion preview 1.5.2
+
+The secondary Presentation uses a fixed full-screen vertical layout with timeline,
+seek bar and four weighted control rows, with no ScrollView. Compact symbol/text
+buttons include physical-key labels and accessibility descriptions. Touch and
+physical A/B/X/Y, shoulder, stick-click, Start/Select and D-pad actions share a
+PlayerControlActions handler. Speed remains touch-only and is labeled accordingly.
+X saves progress before stopping/clearing playback and returning to the library.
+Opening a video resets SBS off, motion off, left source eye and default zoom.
+
+Vault video cards expose a long-press delete action with a named confirmation and
+Cancel. Both folder-contained and individual entries use the same dialog. The IO
+helper only accepts canonical file paths beneath filesDir/locker and never reads
+originalPath for deletion. It removes the vault database entry after successful
+file deletion (or when the private copy is already absent). Errors retain the row
+and report failure. No real user media is touched by automated tests.
+
+Verified APK source: `99a7e2207071abac720ca605983bd6d497838225`.
+Build: https://github.com/firstel/OmegaPlayer/actions/runs/38939449277
+Release: https://github.com/firstel/OmegaPlayer/releases/tag/sdcard-preview-11
+
+APK assembly, all 9 unit tests and all 20 Android tests passed. New checks verify
+all 19 buttons fully fit an 800×360 display with touch targets at least 48 dp,
+physical X close preserves the pre-clear callback, Y recenters, SBS resets off,
+and long-press delete requires confirmation. Vault storage tests verify only the
+private copy/database entry are removed and outside-vault paths are rejected.
+Lint: 0 errors, 76 warnings, 3 hints. APK v2/v3 signatures and 16 KB ZIP alignment
+verified with the retained key. SHA-256:
+`f13ee521f7dd806720b22732bcd5be905e7197a79c2fc2b5a6e1c1f438e99a4a`.
+A subsequent test-only screenshot capture commit has identical app sources; its
+initial run failed to download the emulator image, so the release uses the fully
+verified build above. Thor physical layout/key mapping remains a device check.
