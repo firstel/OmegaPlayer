@@ -77,10 +77,10 @@ internal class GamepadPlaybackControls(
         }
         if (!view.enabled) return levels.any { it > .3f }
         x = axis(MotionEvent.AXIS_X); y = axis(MotionEvent.AXIS_Y)
-        zoom = if(event.device?.getMotionRange(MotionEvent.AXIS_RZ, event.source) != null)
+        // Some built-in/virtual controllers report values without declaring all axis ranges.
+        zoom = if(event.device?.getMotionRange(MotionEvent.AXIS_RZ, event.source) != null ||
+            event.getAxisValue(MotionEvent.AXIS_RZ) != 0f)
             axis(MotionEvent.AXIS_RZ) else axis(MotionEvent.AXIS_RY)
-        // Synthetic events and standard Android gamepads use Z/RZ for the right stick.
-        if(event.device == null) zoom = axis(MotionEvent.AXIS_RZ)
         if(x != 0f || y != 0f || zoom != 0f) {
             if(!ticking) { ticking = true; lastTime = SystemClock.uptimeMillis(); handler.post(ticker) }
         } else { handler.removeCallbacks(ticker); ticking = false }

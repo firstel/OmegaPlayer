@@ -45,7 +45,9 @@ class GamepadPlaybackTest {
                 send(motion(x=.1f,y=-.1f,rz=.1f)); controls.step(1f)
                 assertEquals(0f,state.yaw,.001f); assertEquals(1f,state.zoom,.001f)
                 send(motion(x=1f,y=-1f,rz=-1f)); controls.step(.5f)
-                assertTrue(state.yaw>0); assertTrue(state.pitch>0); assertTrue(state.zoom>1f)
+                assertTrue("Left stick moves yaw", state.yaw>0)
+                assertTrue("Left stick moves pitch", state.pitch>0)
+                assertTrue("Right stick zooms even without range metadata", state.zoom>1f)
                 send(motion()); val yaw=state.yaw; val zoom=state.zoom
                 controls.step(.5f); assertEquals(yaw,state.yaw,.001f); assertEquals(zoom,state.zoom,.001f)
                 send(motion(rt=1f)); assertEquals(40000L,position)
