@@ -128,7 +128,7 @@ fun PlayerScreen(
     DisposableEffect(gamepad, activity) {
         val host = activity as? com.arslandaim.omegaplayer.MainActivity
         host?.gamepadControls = gamepad
-        onDispose { gamepad.reset(); if (host?.gamepadControls === gamepad) host.gamepadControls = null }
+        onDispose { gamepad.reset(); host?.let { if (it.gamepadControls === gamepad) it.gamepadControls = null } }
     }
     var playbackError by remember { mutableStateOf<String?>(null) }
 
