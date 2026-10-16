@@ -14,12 +14,13 @@ import org.junit.Test
 
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 class GamepadPlaybackTest {
-    private fun motion(x: Float = 0f, y: Float = 0f, rz: Float = 0f, lt: Float = 0f, rt: Float = 0f): MotionEvent {
+    private fun motion(x: Float = 0f, y: Float = 0f, rz: Float = 0f, lt: Float = 0f, rt: Float = 0f, hx: Float = 0f, hy: Float = 0f): MotionEvent {
         val properties = MotionEvent.PointerProperties().apply { id=0; toolType=MotionEvent.TOOL_TYPE_UNKNOWN }
         val coords = MotionEvent.PointerCoords().apply {
             setAxisValue(MotionEvent.AXIS_X,x); setAxisValue(MotionEvent.AXIS_Y,y)
             setAxisValue(MotionEvent.AXIS_RZ,rz); setAxisValue(MotionEvent.AXIS_LTRIGGER,lt)
             setAxisValue(MotionEvent.AXIS_RTRIGGER,rt)
+            setAxisValue(MotionEvent.AXIS_HAT_X,hx); setAxisValue(MotionEvent.AXIS_HAT_Y,hy)
         }
         return MotionEvent.obtain(0,0,MotionEvent.ACTION_MOVE,1,arrayOf(properties),arrayOf(coords),
             0,0,1f,1f,-1,0,InputDevice.SOURCE_JOYSTICK,0)
@@ -72,4 +73,25 @@ class GamepadPlaybackTest {
             } finally { controls.reset(); engine.release() }
         }
     }
+    @Test fun hatAxesAndKeyReportsMoveOncePerDpadPress() {
+        val instrumentation=InstrumentationRegistry.getInstrumentation()
+        instrumentation.runOnMainSync {
+            val player=ExoPlayer.Builder(instrumentation.targetContext).build()
+            val state=Vr180State()
+            val directions=mutableListOf<Int>()
+            val pad=GamepadPlaybackControls(player,state,action={ directions.add(it) }) { false }
+            fun send(event: MotionEvent) { try { pad.motion(event) } finally { event.recycle() } }
+            try {
+                player.setMediaItem(MediaItem.fromUri("file:///dpad.mp4"))
+                send(motion(hx=-1f)); send(motion(hx=-1f))
+                pad.key(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_DPAD_LEFT))
+                assertEquals(listOf(KeyEvent.KEYCODE_DPAD_LEFT),directions)
+                pad.key(KeyEvent(KeyEvent.ACTION_UP,KeyEvent.KEYCODE_DPAD_LEFT)); send(motion())
+                send(motion(hx=-1f)); assertEquals(2,directions.size)
+                send(motion()); val down=motion(hy=1f).apply { source=InputDevice.SOURCE_DPAD }; send(down)
+                assertEquals(KeyEvent.KEYCODE_DPAD_DOWN,directions.last())
+            } finally { pad.reset(); player.release() }
+        }
+    }
+
 }

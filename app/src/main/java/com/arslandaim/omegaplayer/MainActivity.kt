@@ -81,12 +81,6 @@ import kotlinx.coroutines.launch
 @AndroidEntryPoint
 class MainActivity : FragmentActivity() {
     internal var gamepadControls: com.arslandaim.omegaplayer.ui.feature.player.GamepadPlaybackControls? = null
-    override fun dispatchGenericMotionEvent(event: android.view.MotionEvent): Boolean =
-        gamepadControls?.motion(event) == true || super.dispatchGenericMotionEvent(event)
-    override fun onKeyDown(keyCode: Int, event: android.view.KeyEvent): Boolean =
-        gamepadControls?.key(event) == true || super.onKeyDown(keyCode, event)
-    override fun onKeyUp(keyCode: Int, event: android.view.KeyEvent): Boolean =
-        gamepadControls?.key(event) == true || super.onKeyUp(keyCode, event)
     override fun onStop() { gamepadControls?.reset(); super.onStop() }
 
     private var isPlayerActive = false
@@ -96,6 +90,7 @@ class MainActivity : FragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        com.arslandaim.omegaplayer.ui.feature.player.installPlaybackInputRouting(window) { gamepadControls }
         enableEdgeToEdge()
         setContent {
             val videoViewModel: VideoViewModel = hiltViewModel()

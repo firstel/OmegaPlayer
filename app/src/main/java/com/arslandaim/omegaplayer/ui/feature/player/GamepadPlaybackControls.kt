@@ -25,6 +25,15 @@ internal class GamepadPlaybackControls(
     private val analog = booleanArrayOf(false, false)
     private val digital = booleanArrayOf(false, false)
     private val pressed = booleanArrayOf(false, false)
+    private val directions = intArrayOf(KeyEvent.KEYCODE_DPAD_LEFT,KeyEvent.KEYCODE_DPAD_RIGHT,KeyEvent.KEYCODE_DPAD_UP,KeyEvent.KEYCODE_DPAD_DOWN)
+    private val hat = BooleanArray(4)
+    private val dpadKeys = BooleanArray(4)
+    private val dpadPressed = BooleanArray(4)
+    private fun direction(index: Int) {
+        val down = hat[index] || dpadKeys[index]
+        if(down && !dpadPressed[index] && active()) action(directions[index])
+        dpadPressed[index] = down
+    }
     private var ticking = false
     private var lastTime = 0L
     private val ticker = object : Runnable {
@@ -40,6 +49,7 @@ internal class GamepadPlaybackControls(
         handler.removeCallbacks(ticker); ticking = false
         x = 0f; y = 0f; zoom = 0f
         analog.fill(false); digital.fill(false); pressed.fill(false)
+        hat.fill(false); dpadKeys.fill(false); dpadPressed.fill(false)
     }
     internal fun step(seconds: Float) {
         if (!active()) { reset(); return }
@@ -55,6 +65,14 @@ internal class GamepadPlaybackControls(
         pressed[index] = down
     }
     fun key(event: KeyEvent): Boolean {
+        val directionIndex = directions.indexOf(event.keyCode)
+        if(directionIndex >= 0) {
+            if(player?.currentMediaItem == null) return false
+            if(event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) dpadKeys[directionIndex]=true
+            if(event.action == KeyEvent.ACTION_UP) dpadKeys[directionIndex]=false
+            direction(directionIndex)
+            return true
+        }
         if (event.keyCode in PlayerControlActions.keys) {
             if (player?.currentMediaItem == null) return false
             if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0 && !locked()) action(event.keyCode)
@@ -68,8 +86,15 @@ internal class GamepadPlaybackControls(
         return true
     }
     fun motion(event: MotionEvent): Boolean {
-        if (!event.isFromSource(InputDevice.SOURCE_JOYSTICK) || event.action != MotionEvent.ACTION_MOVE || player?.currentMediaItem == null) return false
+        val joystick=event.isFromSource(InputDevice.SOURCE_JOYSTICK)
+        val padSource=event.isFromSource(InputDevice.SOURCE_DPAD) || event.isFromSource(InputDevice.SOURCE_GAMEPAD)
+        if ((!joystick && !padSource) || event.action != MotionEvent.ACTION_MOVE || player?.currentMediaItem == null) return false
         if (locked()) { reset(); return true }
+        val hx=event.getAxisValue(MotionEvent.AXIS_HAT_X).let { if(!joystick && it==0f) event.getAxisValue(MotionEvent.AXIS_X) else it }
+        val hy=event.getAxisValue(MotionEvent.AXIS_HAT_Y).let { if(!joystick && it==0f) event.getAxisValue(MotionEvent.AXIS_Y) else it }
+        hat[0]=hx < -.5f; hat[1]=hx > .5f; hat[2]=hy < -.5f; hat[3]=hy > .5f
+        for(index in 0..3) direction(index)
+        if(!joystick) return true
         fun axis(id: Int): Float {
             val flat = max(.18f, event.device?.getMotionRange(id, event.source)?.flat ?: 0f).coerceAtMost(.95f)
             val value = event.getAxisValue(id)
@@ -92,5 +117,16 @@ internal class GamepadPlaybackControls(
             if(!ticking) { ticking = true; lastTime = SystemClock.uptimeMillis(); handler.post(ticker) }
         } else { handler.removeCallbacks(ticker); ticking = false }
         return true
+    }
+}
+
+/** Intercept before Compose/native focus navigation consumes D-pad keys. */
+internal fun installPlaybackInputRouting(window: android.view.Window, controls: () -> GamepadPlaybackControls?) {
+    val previous=window.callback
+    window.callback=object: android.view.Window.Callback by previous {
+        override fun dispatchKeyEvent(event: KeyEvent): Boolean =
+            controls()?.key(event) == true || previous.dispatchKeyEvent(event)
+        override fun dispatchGenericMotionEvent(event: MotionEvent): Boolean =
+            controls()?.motion(event) == true || previous.dispatchGenericMotionEvent(event)
     }
 }
