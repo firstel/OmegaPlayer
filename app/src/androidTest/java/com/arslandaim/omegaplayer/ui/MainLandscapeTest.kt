@@ -40,8 +40,13 @@ class MainLandscapeTest {
             put(MediaStore.Video.Media.DISPLAY_NAME, "Landscape test.mp4")
             put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
             put(MediaStore.Video.Media.RELATIVE_PATH, "Movies/OmegaLayoutCheck")
+            put(MediaStore.Video.Media.IS_PENDING, 1)
         })!!
         try {
+            // Publish a valid file, not an empty row that the media scanner may remove mid-test.
+            androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().context.assets
+                .open("timeline-test.mp4").use { input -> resolver.openOutputStream(uri)!!.use { input.copyTo(it) } }
+            resolver.update(uri, ContentValues().apply { put(MediaStore.Video.Media.IS_PENDING, 0) }, null, null)
             compose.waitUntil(30_000) { compose.onAllNodesWithText("OmegaLayoutCheck").fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithText("Folders", useUnmergedTree = true).assertIsDisplayed()
             compose.onNodeWithText("No", useUnmergedTree = true).assertDoesNotExist()
@@ -67,6 +72,12 @@ class MainLandscapeTest {
             compose.onNodeWithText("Create vault").performScrollTo()
             screenshot("locker-recovery-landscape")
             compose.onNodeWithText("Create vault").assertIsDisplayed().assertIsNotEnabled()
-        } finally { resolver.delete(uri, null, null) }
+        } finally {
+            try { resolver.delete(uri, null, null) }
+            catch (gone: SecurityException) {
+                org.junit.Assert.assertFalse("Fixture must already be unavailable",
+                    com.arslandaim.omegaplayer.ui.feature.library.canReadHistoryMedia(compose.activity, uri.toString()))
+            }
+        }
     }
 }
