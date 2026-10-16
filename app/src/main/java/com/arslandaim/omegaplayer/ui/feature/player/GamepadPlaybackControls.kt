@@ -14,6 +14,7 @@ import kotlin.math.max
 internal class GamepadPlaybackControls(
     private val player: Player?,
     private val view: Vr180State,
+    private val action: (Int) -> Unit = {},
     private val locked: () -> Boolean
 ) {
     private val handler = Handler(Looper.getMainLooper())
@@ -52,6 +53,11 @@ internal class GamepadPlaybackControls(
         pressed[index] = down
     }
     fun key(event: KeyEvent): Boolean {
+        if (event.keyCode in PlayerControlActions.keys) {
+            if (player?.currentMediaItem == null) return false
+            if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0 && !locked()) action(event.keyCode)
+            return true
+        }
         val index = when(event.keyCode) { KeyEvent.KEYCODE_BUTTON_L2 -> 0; KeyEvent.KEYCODE_BUTTON_R2 -> 1; else -> return false }
         if (player?.currentMediaItem == null) return false
         if (event.action == KeyEvent.ACTION_UP) digital[index] = false

@@ -12,6 +12,7 @@ import androidx.biometric.BiometricPrompt
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -315,6 +316,20 @@ fun LockedVideosList(
     val scope = rememberCoroutineScope()
     val dao = remember { LockerDatabase.getDatabase(context).lockerDao() }
     var isProcessing by remember { mutableStateOf(false) }
+    var pendingDelete by remember { mutableStateOf<com.arslandaim.omegaplayer.data.LockedVideo?>(null) }
+    pendingDelete?.let { video ->
+        VaultDeleteDialog(video, onDismiss = { pendingDelete = null }, onConfirm = {
+            pendingDelete = null
+            scope.launch {
+                isProcessing = true
+                try {
+                    val deleted = deleteVaultCopy(context, video, dao)
+                    if (deleted) onRefresh()
+                    Toast.makeText(context, if (deleted) "Deleted from vault" else "Could not delete vault video. Please try again.", Toast.LENGTH_LONG).show()
+                } finally { isProcessing = false }
+            }
+        })
+    }
     
     // Group videos by folder origin
     val groupedVideos = remember(videos) {
@@ -373,6 +388,7 @@ fun LockedVideosList(
                         VaultItem(
                             video = video,
                             onClick = { onVideoClick(video.lockerPath) },
+                            onDelete = { if (!isProcessing) pendingDelete = video },
                             onUnlock = {
                                 scope.launch {
                                     isProcessing = true
@@ -429,6 +445,7 @@ fun LockedVideosList(
                         VaultItem(
                             video = video,
                             onClick = { onVideoClick(video.lockerPath) },
+                            onDelete = { if (!isProcessing) pendingDelete = video },
                             onUnlock = {
                                 scope.launch {
                                     isProcessing = true
@@ -512,14 +529,16 @@ fun VaultFolderItem(
 fun VaultItem(
     video: com.arslandaim.omegaplayer.data.LockedVideo,
     onClick: () -> Unit,
-    onUnlock: () -> Unit
+    onUnlock: () -> Unit,
+    onDelete: () -> Unit = {}
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(0.8f)
             .clip(RoundedCornerShape(20.dp))
-            .clickable(onClick = onClick),
+            .combinedClickable(onClick = onClick, onLongClick = onDelete,
+                onLongClickLabel = "Delete from vault"),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
     ) {
@@ -590,4 +609,17 @@ fun EmptyVaultState() {
             Text(stringResource(R.string.locker_empty), color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
+}
+
+@Composable
+internal fun VaultDeleteDialog(
+    video: com.arslandaim.omegaplayer.data.LockedVideo,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    AlertDialog(onDismissRequest = onDismiss,
+        title = { Text("Delete from vault?") },
+        text = { Text("Permanently delete “${video.name}” from the vault? This cannot be undone. Any original outside the vault will remain unchanged.") },
+        confirmButton = { TextButton(onClick = onConfirm) { Text("Delete", color = MaterialTheme.colorScheme.error) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } })
 }

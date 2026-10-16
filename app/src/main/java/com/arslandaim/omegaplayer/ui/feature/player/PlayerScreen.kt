@@ -124,7 +124,17 @@ fun PlayerScreen(
     val vr180 = remember(videoUri) { Vr180State() }
     var vrView by remember { mutableStateOf<Vr180View?>(null) }
     val currentLocked by rememberUpdatedState(isLocked)
-    val gamepad = remember(mediaController, vr180) { GamepadPlaybackControls(mediaController, vr180) { currentLocked } }
+    val currentBack by rememberUpdatedState(onBack)
+    val controlActions = remember(mediaController, vr180) {
+        val sensors = context.getSystemService(android.hardware.SensorManager::class.java)
+        vr180.motionAvailable = sensors.getDefaultSensor(android.hardware.Sensor.TYPE_GAME_ROTATION_VECTOR) != null ||
+            sensors.getDefaultSensor(android.hardware.Sensor.TYPE_ROTATION_VECTOR) != null
+        PlayerControlActions(mediaController, deviceVolume, vr180,
+            onClosing = { viewModel.savePlaybackProgress() }, onClosed = { currentBack() })
+    }
+    val gamepad = remember(mediaController, vr180) {
+        GamepadPlaybackControls(mediaController, vr180, action = { controlActions.perform(it) }) { currentLocked }
+    }
     DisposableEffect(gamepad, activity) {
         val host = activity as? com.arslandaim.omegaplayer.MainActivity
         host?.gamepadControls = gamepad
@@ -159,6 +169,7 @@ fun PlayerScreen(
 
     LaunchedEffect(videoUri, mediaController) {
         val player = mediaController ?: return@LaunchedEffect
+        vr180.startVideo()
         val newUri = Uri.parse(videoUri)
         val currentUri = player.currentMediaItem?.playbackUri()
         if (currentUri != newUri) {
@@ -463,7 +474,7 @@ fun PlayerScreen(
             .then(if (isControlsVisible && !isLocked) Modifier else Modifier.size(0.dp))
             .background(Color.Black.copy(alpha = 0.65f), RoundedCornerShape(20.dp))) {
             SecondScreenControlsButton(mediaController, isLocked, videoUri,
-                onVideoClosing = { viewModel.savePlaybackProgress() }, onVideoClosed = onBack, vr180 = vr180, gamepad = gamepad)
+                onVideoClosing = { viewModel.savePlaybackProgress() }, onVideoClosed = onBack, vr180 = vr180, gamepad = gamepad, controls = controlActions)
         }
 
         if (!isLocked) Row(Modifier.align(Alignment.TopStart).statusBarsPadding().padding(start = 64.dp),

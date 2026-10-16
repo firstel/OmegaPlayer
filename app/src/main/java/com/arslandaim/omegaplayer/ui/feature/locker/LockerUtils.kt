@@ -283,3 +283,20 @@ suspend fun renameFolder(
     }
     return@withContext false
 }
+
+/** Only the app-private vault copy is eligible; originalPath is never deleted. */
+internal suspend fun deleteVaultCopy(
+    context: android.content.Context,
+    video: com.arslandaim.omegaplayer.data.LockedVideo,
+    dao: com.arslandaim.omegaplayer.data.LockerDao
+): Boolean = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+    try {
+        val root = java.io.File(context.filesDir, "locker").canonicalFile
+        val file = java.io.File(video.lockerPath).canonicalFile
+        if (!file.path.startsWith(root.path + java.io.File.separator)) return@withContext false
+        if (file.exists() && (!file.isFile || !file.delete())) return@withContext false
+        dao.deleteLockedVideo(video)
+        true
+    } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+      catch (_: Exception) { false }
+}

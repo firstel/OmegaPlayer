@@ -35,7 +35,8 @@ internal class PlaybackControlsPresentation(
     private val onVideoClosing: () -> Unit = {},
     private val onVideoClosed: () -> Unit = {},
     private val vr180: Vr180State? = null,
-    private val gamepad: GamepadPlaybackControls? = null
+    private val gamepad: GamepadPlaybackControls? = null,
+    private val controls: PlayerControlActions? = null
 ) : Presentation(activity, display, android.R.style.Theme_Material_NoActionBar) {
     private var attached = false
     internal val attachedPlayer: Player? get() = if (attached) playback else null
@@ -69,10 +70,9 @@ internal class PlaybackControlsPresentation(
             return java.lang.String.format(java.util.Locale.getDefault(), "%d:%02d", seconds / 60, seconds % 60)
         }
         time.text = "${stamp(playback.currentPosition)} / ${stamp(duration)}"
-        play.setText(if (playback.playWhenReady && playback.playbackState != Player.STATE_ENDED)
-            R.string.bottom_pause else R.string.bottom_play)
-        mute.setText(if (deviceVolume.muted) R.string.bottom_unmute else R.string.bottom_mute)
-        speed.text = context.getString(R.string.bottom_speed, playback.playbackParameters.speed)
+        play.text = if (playback.playWhenReady && playback.playbackState != Player.STATE_ENDED) "Ⅱ Pause\nA" else "▶ Play\nA"
+        mute.text = if (deviceVolume.muted) "♪ Unmute\nStart" else "♪ Mute\nStart"
+        speed.text = context.getString(R.string.bottom_speed, playback.playbackParameters.speed) + "\nTouch"
         volumeLabel.text = context.getString(R.string.bottom_volume_level, deviceVolume.percent)
         timeline.load(playback.currentMediaItem?.playbackUri(), duration)
         val audioGroups = playback.currentTracks.groups.filter { it.type == androidx.media3.common.C.TRACK_TYPE_AUDIO }
@@ -83,7 +83,7 @@ internal class PlaybackControlsPresentation(
             else if (audioGroups.none { it.isSelected }) context.getString(R.string.audio_disabled_track)
             else null
         audioStatus.text = message
-        audioStatus.visibility = if (message == null) android.view.View.GONE else android.view.View.VISIBLE
+        audioStatus.visibility = if (message == null) android.view.View.INVISIBLE else android.view.View.VISIBLE
     }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -91,139 +91,100 @@ internal class PlaybackControlsPresentation(
         window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or WindowManager.LayoutParams.FLAG_SECURE)
         val density = context.resources.displayMetrics.density
         fun dp(value: Int) = (value * density).toInt()
+        window?.decorView?.systemUiVisibility = android.view.View.SYSTEM_UI_FLAG_FULLSCREEN or
+            android.view.View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or android.view.View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+        val vr = vr180 ?: Vr180State()
+        val sensors = context.getSystemService(android.hardware.SensorManager::class.java)
+        vr.motionAvailable = sensors.getDefaultSensor(android.hardware.Sensor.TYPE_GAME_ROTATION_VECTOR) != null ||
+            sensors.getDefaultSensor(android.hardware.Sensor.TYPE_ROTATION_VECTOR) != null
+        val actions = controls ?: PlayerControlActions(playback, deviceVolume, vr, onVideoClosing) { dismiss(); onVideoClosed() }
         val panel = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-            setPadding(dp(16), dp(12), dp(16), dp(12))
-            setBackgroundColor(android.graphics.Color.rgb(20, 20, 20))
+            setPadding(dp(8), dp(4), dp(8), dp(4))
+            setBackgroundColor(android.graphics.Color.rgb(20,20,20))
         }
-        panel.addView(TextView(context).apply {
-            text = context.getString(R.string.second_screen_title)
-            textSize = 22f
-            gravity = Gravity.CENTER
-            setTextColor(android.graphics.Color.WHITE)
-        })
-        time = TextView(context).apply {
-            textSize = 16f; gravity = Gravity.CENTER; setTextColor(android.graphics.Color.LTGRAY)
+        val header = LinearLayout(context)
+        time = TextView(context).apply { textSize=14f; setTextColor(android.graphics.Color.WHITE) }
+        volumeLabel = TextView(context).apply {
+            id=R.id.bottom_volume_level; textSize=14f; gravity=Gravity.END; setTextColor(android.graphics.Color.LTGRAY)
         }
-        panel.addView(time)
-        audioStatus = TextView(context).apply {
-            textSize = 13f; gravity = Gravity.CENTER
-            setTextColor(android.graphics.Color.YELLOW)
-            visibility = android.view.View.GONE
+        header.addView(time, LinearLayout.LayoutParams(0,-1,1f))
+        header.addView(volumeLabel, LinearLayout.LayoutParams(0,-1,1f))
+        panel.addView(header,LinearLayout.LayoutParams(-1,dp(24)))
+        audioStatus=TextView(context).apply {
+            textSize=11f; setTextColor(android.graphics.Color.YELLOW); isSingleLine=true
+            ellipsize=android.text.TextUtils.TruncateAt.END
         }
-        panel.addView(audioStatus)
-        timeline = VideoThumbnailTimeline(context) { position ->
-            if (playback.isCommandAvailable(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)) playback.seekTo(position)
-        }.apply { id = R.id.bottom_timeline }
-        panel.addView(timeline, LinearLayout.LayoutParams(-1, -2))
-        progress = android.widget.SeekBar(context).apply {
-            max = 1000
-            setOnSeekBarChangeListener(object : android.widget.SeekBar.OnSeekBarChangeListener {
-                override fun onStartTrackingTouch(bar: android.widget.SeekBar) { scrubbing = true }
-                override fun onProgressChanged(bar: android.widget.SeekBar, value: Int, fromUser: Boolean) {}
+        panel.addView(audioStatus,LinearLayout.LayoutParams(-1,dp(16)))
+        timeline=VideoThumbnailTimeline(context) { position ->
+            if(playback.isCommandAvailable(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)) playback.seekTo(position)
+        }.apply { id=R.id.bottom_timeline }
+        panel.addView(timeline,LinearLayout.LayoutParams(-1,dp(52)))
+        progress=android.widget.SeekBar(context).apply {
+            max=1000
+            setOnSeekBarChangeListener(object: android.widget.SeekBar.OnSeekBarChangeListener {
+                override fun onStartTrackingTouch(bar: android.widget.SeekBar) { scrubbing=true }
+                override fun onProgressChanged(bar: android.widget.SeekBar,value: Int,fromUser: Boolean) {}
                 override fun onStopTrackingTouch(bar: android.widget.SeekBar) {
-                    val duration = playback.duration
-                    if (duration > 0) playback.seekTo((duration.toDouble() * bar.progress / 1000).toLong())
-                    scrubbing = false; refresh()
+                    if(playback.duration>0) playback.seekTo((playback.duration.toDouble()*bar.progress/1000).toLong())
+                    scrubbing=false; refresh()
                 }
             })
         }
-        panel.addView(progress, LinearLayout.LayoutParams(-1, dp(40)))
-        fun row(): LinearLayout = LinearLayout(context).apply {
-            orientation = LinearLayout.HORIZONTAL
-            panel.addView(this, LinearLayout.LayoutParams(-1, -2))
+        panel.addView(progress,LinearLayout.LayoutParams(-1,dp(32)))
+        fun row()=LinearLayout(context).apply {
+            orientation=LinearLayout.HORIZONTAL
+            panel.addView(this,LinearLayout.LayoutParams(-1,0,1f))
         }
-        fun button(row: LinearLayout, id: Int, label: Int, action: () -> Unit): android.widget.Button {
+        fun button(parent: LinearLayout,id: Int,label: ()->String,description: String,action: ()->Unit): android.widget.Button {
             return android.widget.Button(context).apply {
-                this.id = id; setText(label); isAllCaps = false; textSize = 16f
-                minHeight = dp(52)
+                this.id=id; text=label(); contentDescription=description
+                isAllCaps=false; textSize=12f; gravity=Gravity.CENTER
+                minWidth=0; minimumWidth=0; minHeight=0; minimumHeight=0
+                setPadding(dp(2),0,dp(2),0); maxLines=2
+                ellipsize=android.text.TextUtils.TruncateAt.END
+                vrLabels.add(this to label)
                 setOnClickListener { action(); refresh() }
-                row.addView(this, LinearLayout.LayoutParams(0, -2, 1f))
+                parent.addView(this,LinearLayout.LayoutParams(0,-1,1f))
             }
         }
-        vr180?.let { vr ->
-            panel.addView(TextView(context).apply {
-                text = "Left stick: look · Right stick ↑/↓: zoom · L2/R2: −/+10 sec"
-                setTextColor(android.graphics.Color.LTGRAY); textSize = 13f; gravity = Gravity.CENTER
-            })
-            val vrRow = row()
-            fun control(parent: LinearLayout, label: () -> String, action: () -> Unit) {
-                parent.addView(android.widget.Button(context).apply {
-                    text = label(); isAllCaps = false; minHeight = dp(48)
-                    vrLabels.add(this to label)
-                    setOnClickListener { action(); text = label() }
-                }, LinearLayout.LayoutParams(0, -2, 1f))
-            }
-            control(vrRow, { if (vr.enabled) "VR180 SBS: on" else "VR180 SBS: off" }) { vr.enabled = !vr.enabled; vr.center() }
-            control(vrRow, { if (vr.rightEye) "Right eye" else "Left eye" }) { vr.rightEye = !vr.rightEye }
-            control(vrRow, { "Recenter" }) { vr.center() }
-            val lookRow = row()
-            control(lookRow, { "Look left" }) { vr.look(-15f, 0f) }
-            control(lookRow, { "Look right" }) { vr.look(15f, 0f) }
-            control(lookRow, { "Look up" }) { vr.look(0f, 15f) }
-            control(lookRow, { "Look down" }) { vr.look(0f, -15f) }
-            val motionSensor = context.getSystemService(android.hardware.SensorManager::class.java)
-            val hasMotion = motionSensor.getDefaultSensor(android.hardware.Sensor.TYPE_GAME_ROTATION_VECTOR) != null ||
-                motionSensor.getDefaultSensor(android.hardware.Sensor.TYPE_ROTATION_VECTOR) != null
-            control(row(), { if (!hasMotion) "Motion unavailable · use look buttons" else if (vr.motion) "Motion: on" else "Motion: off" }) {
-                if (hasMotion) { vr.motion = !vr.motion; vr.center() }
-            }
+        fun keyButton(parent: LinearLayout,id: Int,label: ()->String,description: String,key: Int)=
+            button(parent,id,label,description) { actions.perform(key) }
+        val transport=row()
+        button(transport,R.id.bottom_seek_back,{ "◀ −10s\nL2" },"Back 10 seconds, L2") {
+            playback.seekTo(skipPosition(playback.currentPosition,playback.duration,-10000))
         }
-        val transport = row()
-        button(transport, R.id.bottom_seek_back, R.string.bottom_back_ten) {
-            playback.seekTo(skipPosition(playback.currentPosition, playback.duration, -10_000))
+        play=keyButton(transport,R.id.bottom_play_pause,{ if(playback.playWhenReady && playback.playbackState != Player.STATE_ENDED) "Ⅱ Pause\nA" else "▶ Play\nA" },"Play or pause, A",android.view.KeyEvent.KEYCODE_BUTTON_A)
+        button(transport,R.id.bottom_seek_forward,{ "+10s ▶\nR2" },"Forward 10 seconds, R2") {
+            playback.seekTo(skipPosition(playback.currentPosition,playback.duration,10000))
         }
-        play = button(transport, R.id.bottom_play_pause, R.string.bottom_play) {
-            if (playback.playWhenReady && playback.playbackState != Player.STATE_ENDED) playback.pause()
-            else {
-                if (playback.playbackState == Player.STATE_ENDED) playback.seekTo(0)
-                if (playback.playbackState == Player.STATE_IDLE) playback.prepare()
-                playback.play()
-            }
+        keyButton(transport,R.id.bottom_stop,{ "■ Stop\nB" },"Stop video, B",android.view.KeyEvent.KEYCODE_BUTTON_B)
+        keyButton(transport,R.id.bottom_close,{ "× Close\nX" },"Close video, X",android.view.KeyEvent.KEYCODE_BUTTON_X)
+        val audio=row()
+        keyButton(audio,R.id.bottom_volume_down,{ "− Volume\nL1" },"Volume down, L1",android.view.KeyEvent.KEYCODE_BUTTON_L1)
+        mute=keyButton(audio,R.id.bottom_mute,{ if(deviceVolume.muted) "♪ Unmute\nStart" else "♪ Mute\nStart" },"Mute or unmute, Start",android.view.KeyEvent.KEYCODE_BUTTON_START)
+        keyButton(audio,R.id.bottom_volume_up,{ "+ Volume\nR1" },"Volume up, R1",android.view.KeyEvent.KEYCODE_BUTTON_R1)
+        speed=button(audio,R.id.bottom_speed,{ context.getString(R.string.bottom_speed,playback.playbackParameters.speed)+"\nTouch" },"Playback speed, touch") {
+            val speeds=listOf(.5f,.75f,1f,1.25f,1.5f,2f)
+            playback.setPlaybackSpeed(speeds.firstOrNull { it>playback.playbackParameters.speed+.01f } ?: speeds.first())
         }
-        button(transport, R.id.bottom_seek_forward, R.string.bottom_forward_ten) {
-            playback.seekTo(skipPosition(playback.currentPosition, playback.duration, 10_000))
-        }
-        val options = row()
-        button(options, R.id.bottom_stop, R.string.bottom_stop) {
-            playback.pause(); playback.seekTo(0); playback.stop()
-        }
-        mute = button(options, R.id.bottom_mute, R.string.bottom_mute) {
-            deviceVolume.toggleMute()
-            playback.volume = 1f
-        }
-        speed = button(options, R.id.bottom_speed, R.string.bottom_play) {
-            val speeds = listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f)
-            playback.setPlaybackSpeed(speeds.firstOrNull { it > playback.playbackParameters.speed + 0.01f } ?: speeds.first())
-        }
-        val volumeRow = row()
-        button(volumeRow, R.id.bottom_volume_down, R.string.bottom_volume_down) {
-            deviceVolume.adjust(up = false)
-            playback.volume = 1f
-        }
-        volumeLabel = TextView(context).apply {
-            id = R.id.bottom_volume_level
-            textSize = 14f; gravity = Gravity.CENTER; setTextColor(android.graphics.Color.WHITE)
-        }
-        volumeRow.addView(volumeLabel, LinearLayout.LayoutParams(0, -1, 1f))
-        button(volumeRow, R.id.bottom_volume_up, R.string.bottom_volume_up) {
-            deviceVolume.adjust(up = true)
-            playback.volume = 1f
-        }
-        button(row(), R.id.bottom_close, R.string.bottom_close) {
-            onVideoClosing()
-            playback.pause()
-            playback.stop()
-            playback.clearMediaItems()
-            dismiss()
-            onVideoClosed()
-        }
-        val scroll = android.widget.ScrollView(context).apply {
-            isFillViewport = true
-            addView(panel, android.widget.FrameLayout.LayoutParams(-1, -1))
-        }
-        setContentView(scroll)
+        val vrRow=row()
+        keyButton(vrRow,R.id.bottom_vr,{ if(vr.enabled) "SBS On\nL3" else "SBS Off\nL3" },"Toggle VR180 SBS, left stick click L3",android.view.KeyEvent.KEYCODE_BUTTON_THUMBL)
+        keyButton(vrRow,R.id.bottom_eye,{ if(vr.rightEye) "Right eye\nSelect" else "Left eye\nSelect" },"Change source eye, Select",android.view.KeyEvent.KEYCODE_BUTTON_SELECT)
+        keyButton(vrRow,R.id.bottom_recenter,{ "◎ Center\nY" },"Recenter view and zoom, Y",android.view.KeyEvent.KEYCODE_BUTTON_Y)
+        keyButton(vrRow,R.id.bottom_motion,{ if(!vr.motionAvailable) "No motion\nR3" else if(vr.motion) "Motion On\nR3" else "Motion Off\nR3" },"Toggle motion tracking, right stick click R3",android.view.KeyEvent.KEYCODE_BUTTON_THUMBR).isEnabled=vr.motionAvailable
+        val look=row()
+        keyButton(look,R.id.bottom_look_left,{ "← Look\nD-pad ←" },"Look left, D-pad left",android.view.KeyEvent.KEYCODE_DPAD_LEFT)
+        keyButton(look,R.id.bottom_look_up,{ "↑ Look\nD-pad ↑" },"Look up, D-pad up",android.view.KeyEvent.KEYCODE_DPAD_UP)
+        keyButton(look,R.id.bottom_look_down,{ "↓ Look\nD-pad ↓" },"Look down, D-pad down",android.view.KeyEvent.KEYCODE_DPAD_DOWN)
+        keyButton(look,R.id.bottom_look_right,{ "Look →\nD-pad →" },"Look right, D-pad right",android.view.KeyEvent.KEYCODE_DPAD_RIGHT)
+        button(look,R.id.bottom_zoom_out,{ "− Zoom\nRS ↓" },"Zoom out, right stick down") { if(vr.enabled) vr.zoomBy(-.25f) }
+        button(look,R.id.bottom_zoom_in,{ "+ Zoom\nRS ↑" },"Zoom in, right stick up") { if(vr.enabled) vr.zoomBy(.25f) }
+        panel.addView(TextView(context).apply {
+            text="Left stick: look   ·   Right stick: zoom"; textSize=11f
+            gravity=Gravity.CENTER; setTextColor(android.graphics.Color.LTGRAY)
+        },LinearLayout.LayoutParams(-1,dp(16)))
+        setContentView(panel)
         refresh()
     }
     override fun onStart() {
@@ -254,7 +215,7 @@ internal fun skipPosition(position: Long, duration: Long, offset: Long): Long =
 @Composable
 internal fun SecondScreenControlsButton(
     player: Player?, locked: Boolean, videoUri: String,
-    onVideoClosing: () -> Unit, onVideoClosed: () -> Unit, vr180: Vr180State? = null, gamepad: GamepadPlaybackControls? = null
+    onVideoClosing: () -> Unit, onVideoClosed: () -> Unit, vr180: Vr180State? = null, gamepad: GamepadPlaybackControls? = null, controls: PlayerControlActions? = null
 ) {
     val context = LocalContext.current
     val activity = context as? Activity ?: return
@@ -274,7 +235,7 @@ internal fun SecondScreenControlsButton(
         manager.registerDisplayListener(listener, Handler(Looper.getMainLooper()))
         onDispose { manager.unregisterDisplayListener(listener) }
     }
-    DisposableEffect(enabled, locked, player, revision, lifecycle, vr180, gamepad) {
+    DisposableEffect(enabled, locked, player, revision, lifecycle, vr180, gamepad, controls) {
         var presentation: PlaybackControlsPresentation? = null
         fun hide() { presentation?.dismiss(); presentation = null; active = false }
         fun show() {
@@ -283,7 +244,7 @@ internal fun SecondScreenControlsButton(
                 .firstOrNull { it.displayId != activity.window.decorView.display?.displayId } ?: return
             try {
                 presentation = PlaybackControlsPresentation(activity, display, player,
-                    onVideoClosing = { currentClosing() }, onVideoClosed = { currentClosed() }, vr180 = vr180, gamepad = gamepad).also { panel ->
+                    onVideoClosing = { currentClosing() }, onVideoClosed = { currentClosed() }, vr180 = vr180, gamepad = gamepad, controls = controls).also { panel ->
                     panel.setOnCancelListener { enabled = false }
                     panel.setOnDismissListener { active = false }
                     panel.show()
