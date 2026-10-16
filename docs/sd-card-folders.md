@@ -275,3 +275,36 @@ a KTX URI parsing convenience function). APK v2/v3 signatures and 16 KB ZIP
 alignment verified using the retained preview key. SHA-256:
 `a56aeffc2c741d49dd220397c1ed390169fa71292eda3eec5e3b846704e51ad0`.
 Physical Thor removable-card behavior remains a device check.
+
+### VR180 side-by-side preview 1.5.0
+
+Manual VR180 SBS mode maps one half of an equirectangular side-by-side source
+onto a 180-degree hemisphere. A GLES external-texture surface shares the current
+MediaController/player; it does not start a second decoder or copy the movie.
+The source eye can be changed without restarting playback. Source texture
+transforms are applied and the rear hemisphere is black rather than repeating.
+Touch dragging and lower-screen directional controls adjust a bounded view;
+Recenter resets the offsets. Optional game/regular rotation-vector input uses
+screen-orientation remapping and a fresh relative reference on recenter. Motion
+is off by default, with an unavailable message when no rotation sensor exists.
+Sensors pause with the activity; surface and sensor listeners detach on disposal.
+
+The lower display retains existing transport, timeline, volume and close controls
+and adds VR mode, eye selection, look direction, recenter and motion controls.
+Normal playback remains the default for each video. This is a single-eye handheld
+view, not stereoscopic headset output. Fisheye VR180, VR360 and automatic format
+detection are outside this preview. High-resolution decode performance and Thor
+sensor axes/calibration require a physical-device check.
+
+Verified source: `1ae94157b84e62c355ac8e9823804684517fc594`.
+Build: https://github.com/firstel/OmegaPlayer/actions/runs/38924165009 (attempt 2).
+Release: https://github.com/firstel/OmegaPlayer/releases/tag/sdcard-preview-9
+
+APK assembly, 9 unit tests and 16 Android tests passed. VR tests decode a synthetic
+SBS video and use PixelCopy to verify left/right eye selection, upright orientation
+and pause/resume rendering, plus mapping bounds/recenter. An initial run had a
+transient missing Compose host in an existing PIN-layout test; the full rerun passed.
+Lint: 0 errors, 72 warnings, 3 hints. APK v2/v3 signatures and 16 KB ZIP alignment
+verified with the retained preview key. SHA-256:
+`ab4a06772b6803bad9c5f891b1d10f5ca48437f4822f5b5084bbb9b686387687`.
+Actual Thor sensor axes and high-resolution video performance remain device checks.
