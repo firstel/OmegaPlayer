@@ -50,6 +50,18 @@ class CompactControlsTest {
                         assertEquals("Full button must fit horizontally",button.width,bounds.width())
                         assertTrue("Touch height at least 48dp",button.height>=48)
                     }
+                    val root=panel.window!!.decorView
+                    val image=Bitmap.createBitmap(root.width,root.height,Bitmap.Config.ARGB_8888)
+                    root.draw(Canvas(image))
+                    val resolver=it.contentResolver
+                    val capture=resolver.insert(android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                        android.content.ContentValues().apply {
+                            put(android.provider.MediaStore.Images.Media.DISPLAY_NAME,"compact-bottom-controls.png")
+                            put(android.provider.MediaStore.Images.Media.MIME_TYPE,"image/png")
+                            put(android.provider.MediaStore.Images.Media.RELATIVE_PATH,"Pictures/OmegaPlayerLayout")
+                        })!!
+                    resolver.openOutputStream(capture)!!.use { image.compress(Bitmap.CompressFormat.PNG,100,it) }
+                    image.recycle()
                     assertFalse(state.enabled)
                     panel.dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BUTTON_THUMBL))
                     assertTrue(state.enabled)
