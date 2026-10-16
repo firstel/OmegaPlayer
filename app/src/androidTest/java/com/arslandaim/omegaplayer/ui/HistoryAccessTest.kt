@@ -22,17 +22,22 @@ class HistoryAccessTest {
             put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
             put(MediaStore.Video.Media.RELATIVE_PATH, "Movies/OmegaHistoryTest")
         })!!
+        var deleted = false
         try {
             resolver.openOutputStream(uri)!!.use { it.write(1) }
             assertTrue(canReadHistoryMedia(context, uri.toString()))
             assertTrue(canReadHistoryMedia(context, file.toURI().toString()))
             assertTrue(canReadHistoryMedia(context, file.absolutePath))
             resolver.delete(uri, null, null)
+            deleted = true
             file.delete()
             assertFalse(canReadHistoryMedia(context, uri.toString()))
             assertFalse(canReadHistoryMedia(context, file.toURI().toString()))
             assertFalse(canReadHistoryMedia(context, "content://com.android.externalstorage.documents/document/FFFF-FFFF%3AMovies%2Fmissing.mp4"))
-        } finally { resolver.delete(uri, null, null); file.delete() }
+        } finally {
+            if (!deleted) resolver.delete(uri, null, null)
+            file.delete()
+        }
     }
 
     private fun item(uri: String) = RecentPlayback(uri = uri, position = 1000, duration = 10000,
