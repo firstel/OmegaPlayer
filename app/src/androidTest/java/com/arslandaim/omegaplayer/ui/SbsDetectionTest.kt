@@ -28,6 +28,32 @@ class SbsDetectionTest {
             assertFalse(similarStereoHalves(image))
         } finally { image.recycle() }
     }
+    @Test fun recognizesDifferentDepthOffsetsAndExposureBetweenEyes() {
+        val image=Bitmap.createBitmap(256,128,Bitmap.Config.ARGB_8888)
+        val random=Random(83)
+        val tiles=IntArray(32*32) { random.nextInt(30,200) }
+        fun value(x:Int,y:Int)=tiles[(y.coerceIn(0,127)/4)*32+x.coerceIn(0,127)/4]
+        try {
+            for(y in 0 until 128) for(x in 0 until 128) {
+                val a=value(x,y)
+                val disparity=if(y<64) 16 else -12
+                val b=(value(x-disparity,y-2)*.8+30).toInt()
+                image.setPixel(x,y,Color.rgb(a,a,a))
+                image.setPixel(128+x,y,Color.rgb(b,b,b))
+            }
+            assertTrue("Stereo depth and exposure should not require identical whole halves",similarStereoHalves(image))
+        } finally { image.recycle() }
+    }
+    @Test fun smoothOrdinaryGradientIsNotStereoEvidence() {
+        val image=Bitmap.createBitmap(256,128,Bitmap.Config.ARGB_8888)
+        try {
+            for(y in 0 until 128) for(x in 0 until 256) {
+                val v=(y*1.5).toInt()
+                image.setPixel(x,y,Color.rgb(v,v,v))
+            }
+            assertFalse(similarStereoHalves(image))
+        } finally { image.recycle() }
+    }
     @Test fun manualChoiceAndNewVideoIgnoreOldDetection() {
         val state=Vr180State()
         val first=state.startVideo()

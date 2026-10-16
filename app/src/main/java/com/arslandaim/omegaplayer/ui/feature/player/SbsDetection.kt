@@ -8,45 +8,64 @@ import android.os.Build
 import kotlin.math.*
 import kotlin.random.Random
 
-/** A single small, random interior frame. Failure leaves ordinary playback available. */
+/** Try up to three small interior frames; stop as soon as stereo detail matches. */
 internal fun detectSbsVideo(context: Context, uri: Uri): Boolean {
     val retriever = MediaMetadataRetriever()
     return try {
         retriever.setDataSource(context, uri)
         val duration = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L
-        val time = if (duration > 10) Random.nextLong(duration / 10, duration * 9 / 10) else 0L
-        val frame = if (Build.VERSION.SDK_INT >= 27) retriever.getScaledFrameAtTime(
-            time * 1000, MediaMetadataRetriever.OPTION_CLOSEST_SYNC, 320, 180)
-        else retriever.getFrameAtTime(time * 1000, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
-        if (frame == null) false else try { similarStereoHalves(frame) } finally { frame.recycle() }
+        val fraction = Random.nextDouble(.2, .4)
+        val times = if (duration > 10) listOf(fraction, fraction + .3, .85)
+            .map { (duration * it).toLong() } else listOf(0L)
+        times.any { time ->
+            val frame = if (Build.VERSION.SDK_INT >= 27) retriever.getScaledFrameAtTime(
+                time * 1000, MediaMetadataRetriever.OPTION_CLOSEST_SYNC, 320, 180)
+            else retriever.getFrameAtTime(time * 1000, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+            if (frame == null) false else try { similarStereoHalves(frame) } finally { frame.recycle() }
+        }
     } catch (_: Exception) { false }
     finally { runCatching { retriever.release() } }
 }
 
-/** Conservative stereo heuristic: textured matching eyes, allowing modest horizontal disparity. */
+/** Match local detail so varying stereo depth, brightness and small vertical offsets are tolerated. */
 internal fun similarStereoHalves(source: Bitmap): Boolean {
     if (source.width < source.height || source.width < 32) return false
     val frame = Bitmap.createScaledBitmap(source, 128, 64, true)
     try {
         val pixels = IntArray(128 * 64)
         frame.getPixels(pixels, 0, 128, 0, 0, 128, 64)
-        fun luma(x: Int, y: Int): Double {
-            val c = pixels[y * 128 + x]
-            return ((c shr 16 and 255) * .299 + (c shr 8 and 255) * .587 + (c and 255) * .114)
+        val gray = DoubleArray(pixels.size) { i ->
+            val c = pixels[i]
+            (c shr 16 and 255) * .299 + (c shr 8 and 255) * .587 + (c and 255) * .114
         }
-        for (shift in -4..4) {
-            var a=0.0; var b=0.0; var aa=0.0; var bb=0.0; var ab=0.0; var error=0.0; var n=0
-            for (y in 4 until 60) for (x in 8 until 56) {
-                val left=luma(x,y); val right=luma(64+x+shift,y)
-                a+=left; b+=right; aa+=left*left; bb+=right*right; ab+=left*right
-                error+=abs(left-right); n++
+        var textured = 0
+        var matched = 0
+        for (top in listOf(8, 20, 32, 44)) for (left in listOf(8, 20, 32, 44)) {
+            var sum = 0.0; var square = 0.0; var detail = 0.0
+            for (y in top until top + 12) for (x in left until left + 12) {
+                val v = gray[y * 128 + x]
+                sum += v; square += v * v
+                // Smooth gradients and letterbox bars are not useful stereo evidence.
+                detail += abs(v - gray[y * 128 + x - 1]) + abs(v - gray[(y - 1) * 128 + x])
             }
-            val va=aa-a*a/n; val vb=bb-b*b/n
-            // Blank, dark and nearly uniform frames cannot establish stereo content.
-            if (va/n < 180 || vb/n < 180) continue
-            val correlation=(ab-a*b/n)/sqrt(va*vb)
-            if (correlation > .90 && error/n < 28) return true
+            val variance = square - sum * sum / 144
+            if (variance / 144 < 70 || detail / 288 < 3) continue
+            textured++
+            var best = 0.0
+            for (dy in -2..2) for (dx in -10..10) {
+                if (left + dx < 0 || left + dx + 12 > 64) continue
+                var other = 0.0; var otherSquare = 0.0; var product = 0.0
+                for (y in top until top + 12) for (x in left until left + 12) {
+                    val a = gray[y * 128 + x]
+                    val b = gray[(y + dy) * 128 + 64 + x + dx]
+                    other += b; otherSquare += b * b; product += a * b
+                }
+                val otherVariance = otherSquare - other * other / 144
+                if (otherVariance / 144 < 70) continue
+                best = max(best, (product - sum * other / 144) / sqrt(variance * otherVariance))
+            }
+            if (best >= .78) matched++
         }
-        return false
+        return textured >= 6 && matched >= 6 && matched.toDouble() / textured >= .60
     } finally { if (frame !== source) frame.recycle() }
 }
