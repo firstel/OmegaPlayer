@@ -1,0 +1,83 @@
+package com.arslandaim.omegaplayer.ui
+
+import android.graphics.Bitmap
+import android.graphics.Color
+import android.net.Uri
+import androidx.test.platform.app.InstrumentationRegistry
+import com.arslandaim.omegaplayer.ui.feature.player.*
+import org.junit.Assert.*
+import org.junit.Test
+import kotlin.random.Random
+
+class SbsDetectionTest {
+    @Test fun recognizesMatchingEyesWithDisparityButRejectsUnrelatedAndBlankFrames() {
+        val image=Bitmap.createBitmap(256,128,Bitmap.Config.ARGB_8888)
+        val random=Random(27)
+        val texture=IntArray(128*128) { Color.rgb(random.nextInt(256),random.nextInt(256),random.nextInt(256)) }
+        try {
+            for(y in 0 until 128) for(x in 0 until 128) {
+                image.setPixel(x,y,texture[y*128+x])
+                image.setPixel(128+x,y,texture[y*128+(x-4).coerceAtLeast(0)])
+            }
+            assertTrue(similarStereoHalves(image))
+            for(y in 0 until 128) for(x in 128 until 256) image.setPixel(x,y,Color.rgb(random.nextInt(256),random.nextInt(256),random.nextInt(256)))
+            assertFalse(similarStereoHalves(image))
+            image.eraseColor(Color.BLACK)
+            assertFalse(similarStereoHalves(image))
+            image.eraseColor(Color.GRAY)
+            assertFalse(similarStereoHalves(image))
+        } finally { image.recycle() }
+    }
+    @Test fun recognizesDifferentDepthOffsetsAndExposureBetweenEyes() {
+        val image=Bitmap.createBitmap(256,128,Bitmap.Config.ARGB_8888)
+        val random=Random(83)
+        val tiles=IntArray(32*32) { random.nextInt(30,200) }
+        fun value(x:Int,y:Int)=tiles[(y.coerceIn(0,127)/4)*32+x.coerceIn(0,127)/4]
+        try {
+            for(y in 0 until 128) for(x in 0 until 128) {
+                val a=value(x,y)
+                val disparity=if(y<64) 16 else -12
+                val b=(value(x-disparity,y-2)*.8+30).toInt()
+                image.setPixel(x,y,Color.rgb(a,a,a))
+                image.setPixel(128+x,y,Color.rgb(b,b,b))
+            }
+            assertTrue("Stereo depth and exposure should not require identical whole halves",similarStereoHalves(image))
+        } finally { image.recycle() }
+    }
+    @Test fun smoothOrdinaryGradientIsNotStereoEvidence() {
+        val image=Bitmap.createBitmap(256,128,Bitmap.Config.ARGB_8888)
+        try {
+            for(y in 0 until 128) for(x in 0 until 256) {
+                val v=(y*1.5).toInt()
+                image.setPixel(x,y,Color.rgb(v,v,v))
+            }
+            assertFalse(similarStereoHalves(image))
+        } finally { image.recycle() }
+    }
+    @Test fun manualChoiceAndNewVideoIgnoreOldDetection() {
+        val state=Vr180State()
+        val first=state.startVideo()
+        state.toggleSbs()
+        state.detectedSbs(first,false)
+        assertTrue(state.enabled)
+        val second=state.startVideo()
+        state.detectedSbs(first,true)
+        assertFalse(state.enabled)
+        state.detectedSbs(second,true)
+        assertTrue(state.enabled)
+    }
+    @Test fun decodesSampledVideoFrame() {
+        val instrumentation=InstrumentationRegistry.getInstrumentation()
+        val file=java.io.File(instrumentation.targetContext.cacheDir,"sbs-detection-test.mp4")
+        try {
+            instrumentation.context.assets.open("sbs-detection-test.mp4").use { input ->
+                file.outputStream().use { output -> input.copyTo(output) }
+            }
+            assertTrue(detectSbsVideo(instrumentation.targetContext,Uri.fromFile(file)))
+        } finally { file.delete() }
+    }
+    @Test fun unreadableFileFallsBackToNormalPlayback() {
+        assertFalse(detectSbsVideo(InstrumentationRegistry.getInstrumentation().targetContext,
+            Uri.parse("file:///missing-sbs-test.mp4")))
+    }
+}

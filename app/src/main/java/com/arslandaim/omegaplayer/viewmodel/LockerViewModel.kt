@@ -89,14 +89,23 @@ class LockerViewModel @Inject constructor(
 
     suspend fun getSettings(): LockerSettings? = dao.getSettings()
 
-    fun saveSettings(settings: LockerSettings) {
+    fun saveSettings(settings: LockerSettings, onComplete: (Boolean) -> Unit = {}) {
         viewModelScope.launch {
-            val hashedSettings = settings.copy(
-                pin = SecurityUtils.hashString(settings.pin),
-                securityAnswer = SecurityUtils.hashString(settings.securityAnswer.lowercase().trim())
-            )
-            dao.saveSettings(hashedSettings)
-            _pinState.value = PinState.Unlocked
+            try {
+                val hashedSettings = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                    settings.copy(
+                        pin = SecurityUtils.hashString(settings.pin),
+                        securityAnswer = SecurityUtils.hashString(settings.securityAnswer.lowercase().trim())
+                    )
+                }
+                dao.saveSettings(hashedSettings)
+                _pinState.value = PinState.Unlocked
+                onComplete(true)
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                onComplete(false)
+            }
         }
     }
 }

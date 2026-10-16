@@ -6,6 +6,8 @@
 
 package com.arslandaim.omegaplayer.ui.feature.player
 
+import androidx.compose.foundation.verticalScroll
+
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -350,6 +352,18 @@ fun AudioPlayerScreen(
         }
     }
 
+    var playbackError by remember(audioUri) { mutableStateOf<String?>(null) }
+    val documentTitle by produceState<String?>(initialValue = null, key1 = audioUri) {
+        value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            try {
+                context.contentResolver.query(
+                    Uri.parse(audioUri), arrayOf(android.provider.OpenableColumns.DISPLAY_NAME),
+                    null, null, null
+                )?.use { if (it.moveToFirst()) it.getString(0) else null }
+            } catch (_: Exception) { null }
+        }
+    }
+
     var isPlaying by remember { mutableStateOf(controller?.isPlaying ?: false) }
     var currentPosition by remember { mutableStateOf(controller?.currentPosition ?: 0L) }
     var duration by remember { mutableStateOf(controller?.duration?.coerceAtLeast(0L) ?: 0L) }
@@ -411,10 +425,13 @@ fun AudioPlayerScreen(
         }
     }
 
-    LaunchedEffect(controller, audios) {
+    LaunchedEffect(controller, audios, audioUri) {
         val player = controller ?: return@LaunchedEffect
         
         val listener = object : Player.Listener {
+            override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+                playbackError = "Cannot play this file. Check folder access and that the SD card is inserted."
+            }
             override fun onIsPlayingChanged(playing: Boolean) {
                 isPlaying = playing
             }
@@ -439,6 +456,7 @@ fun AudioPlayerScreen(
         // Only set playlist and play if it's not already playing this specific URI or if it's a new session
         val currentUri = player.currentMediaItem?.localConfiguration?.uri?.toString()
         if (currentUri != audioUri) {
+            playbackError = null
             val mediaItems = audios.map { audioItem ->
                 val artUri = ContentUris.withAppendedId(
                     Uri.parse("content://media/external/audio/albumart"),
@@ -457,13 +475,17 @@ fun AudioPlayerScreen(
                     )
                     .build()
             }
-            val index = audios.indexOfFirst { it.uri.toString() == audioUri }.coerceAtLeast(0)
+            val index = audios.indexOfFirst { it.uri.toString() == audioUri }
             
-            if (mediaItems.isNotEmpty()) {
+            if (index >= 0) {
                 player.setMediaItems(mediaItems, index, 0L)
-                player.prepare()
-                player.play()
+            } else {
+                // SAF documents may never appear in MediaStore. Play the requested URI,
+                // even if another library folder or an empty library is selected.
+                player.setMediaItem(androidx.media3.common.MediaItem.fromUri(Uri.parse(audioUri)))
             }
+            player.prepare()
+            player.play()
         } else {
             // Update currentAudio if already playing
             currentAudio = audios.find { it.uri.toString() == audioUri }
@@ -677,20 +699,14 @@ fun AudioPlayerScreen(
                 }
             } else {
                 val player = controller!!
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(padding)
-                        .padding(horizontal = 24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Spacer(modifier = Modifier.height(12.dp))
-
+                BoxWithConstraints(Modifier.fillMaxSize().padding(padding).padding(horizontal = 24.dp)) {
+                    val landscape = maxWidth >= 480.dp && maxWidth > maxHeight
+                    val artSize = if (landscape) (maxHeight - 32.dp).coerceIn(120.dp, 280.dp) else 280.dp
+                    val artwork: @Composable () -> Unit = {
                     // Album Art with Breathing Animation
                     Box(
                         modifier = Modifier
-                            .size(320.dp)
+                            .size(artSize)
                             .graphicsLayer {
                                 scaleX = artScale
                                 scaleY = artScale
@@ -709,10 +725,14 @@ fun AudioPlayerScreen(
                         )
                     }
 
+                    }
+                    val controls: @Composable () -> Unit = {
+                        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         // Audio Info
                         Text(
-                            text = currentAudio?.name ?: "Unknown Title",
+                            text = playbackError ?: currentAudio?.name ?: documentTitle ?: "Unknown Title",
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.ExtraBold,
                             maxLines = 1,
@@ -729,10 +749,10 @@ fun AudioPlayerScreen(
                         )
                     }
 
-                    // Waveform Visualizer
-                    WaveformVisualizer(
+                    // Preserve space for seek and transport controls in short windows.
+                    if (!landscape) WaveformVisualizer(
                         isPlaying = isPlaying,
-                        modifier = Modifier.padding(vertical = 24.dp),
+                        modifier = Modifier.padding(vertical = if (landscape) 4.dp else 20.dp),
                         color = MaterialTheme.colorScheme.primary
                     )
 
@@ -772,7 +792,7 @@ fun AudioPlayerScreen(
 
                     // Controls
                     Row(
-                        modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp),
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
                         horizontalArrangement = Arrangement.SpaceEvenly,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -805,7 +825,7 @@ fun AudioPlayerScreen(
                         
                         FilledIconButton(
                             onClick = { if (isPlaying) player.pause() else player.play() },
-                            modifier = Modifier.size(84.dp),
+                            modifier = Modifier.size(if (landscape) 64.dp else 84.dp),
                             shape = CircleShape,
                             colors = IconButtonDefaults.filledIconButtonColors(
                                 containerColor = Color.White,
@@ -840,6 +860,20 @@ fun AudioPlayerScreen(
                             )
                         }
                     }
+                        }
+                    }
+                    if (landscape) {
+                        Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(32.dp)) {
+                            artwork()
+                            Column(Modifier.weight(1f).verticalScroll(androidx.compose.foundation.rememberScrollState()).padding(vertical = 12.dp)) { controls() }
+                        }
+                    } else {
+                        Column(Modifier.fillMaxSize().verticalScroll(androidx.compose.foundation.rememberScrollState()).padding(vertical = 12.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(24.dp)) { artwork(); controls() }
+                    }
+
                 }
             }
         }

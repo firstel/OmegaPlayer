@@ -10,6 +10,7 @@ import android.app.Application
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import com.arslandaim.omegaplayer.media.playbackUri
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -57,7 +58,7 @@ class VideoViewModel @Inject constructor(
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
     val activeVideoUri: StateFlow<String?> = playbackConnection.currentMediaItem
-        .map { it?.localConfiguration?.uri?.toString() }
+        .map { it?.playbackUri()?.toString() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     private val _isBackgroundPlayEnabled = MutableStateFlow(false)
@@ -175,14 +176,14 @@ class VideoViewModel @Inject constructor(
 
     val folders: StateFlow<Map<String, Int>> = videos
         .map { videoList ->
-            videoList.groupBy { File(it.path).parentFile?.name ?: "Internal" }
+            videoList.groupBy { it.folderName }
                 .mapValues { it.value.size }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
     val videosInSelectedFolder: StateFlow<List<VideoModel>> = combine(videos, _selectedFolder) { videoList, folder ->
         if (folder == null) emptyList()
-        else videoList.filter { (File(it.path).parentFile?.name ?: "Internal") == folder }
+        else videoList.filter { (it.folderName) == folder }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     @androidx.annotation.OptIn(UnstableApi::class)
@@ -210,7 +211,7 @@ class VideoViewModel @Inject constructor(
 
     fun stopIfPlaying(uri: Uri) {
         playbackConnection.mediaController.value?.let { player ->
-            val currentUri = player.currentMediaItem?.localConfiguration?.uri
+            val currentUri = player.currentMediaItem?.playbackUri()
             if (currentUri == uri) {
                 player.stop()
                 player.clearMediaItems()
@@ -220,7 +221,7 @@ class VideoViewModel @Inject constructor(
 
     fun stopIfPlaying(uris: List<Uri>) {
         playbackConnection.mediaController.value?.let { player ->
-            val currentUri = player.currentMediaItem?.localConfiguration?.uri
+            val currentUri = player.currentMediaItem?.playbackUri()
             if (currentUri != null && uris.contains(currentUri)) {
                 player.stop()
                 player.clearMediaItems()
@@ -231,7 +232,7 @@ class VideoViewModel @Inject constructor(
 
 
     fun getVideosInFolder(folderName: String): List<VideoModel> {
-        return videos.value.filter { (File(it.path).parentFile?.name ?: "Internal") == folderName }
+        return videos.value.filter { (it.folderName) == folderName }
     }
 
     fun fetchVideos(context: Context) {
@@ -257,7 +258,7 @@ class VideoViewModel @Inject constructor(
     fun savePlaybackProgress() {
         val player = playbackConnection.mediaController.value ?: return
         val mediaItem = player.currentMediaItem ?: return
-        val currentUri = mediaItem.localConfiguration?.uri?.toString() ?: return
+        val currentUri = mediaItem.playbackUri()?.toString() ?: return
         val video = videos.value.find { it.uri.toString() == currentUri } ?: return
         
         val position = player.currentPosition

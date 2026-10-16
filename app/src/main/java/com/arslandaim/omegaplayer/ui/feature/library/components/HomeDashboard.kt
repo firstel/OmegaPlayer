@@ -43,7 +43,8 @@ import java.nio.charset.StandardCharsets
 fun HomeDashboard(
     selectedTab: MediaTab,
     storageStats: StorageStats,
-    onTabSelected: (MediaTab) -> Unit
+    onTabSelected: (MediaTab) -> Unit,
+    compact: Boolean = false
 ) {
     Column(
         modifier = Modifier
@@ -54,7 +55,7 @@ fun HomeDashboard(
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(56.dp),
+                .height(if (compact) 40.dp else 56.dp),
             shape = RoundedCornerShape(28.dp),
             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
         ) {
@@ -99,7 +100,7 @@ fun HomeDashboard(
             }
         }
 
-        if (selectedTab == MediaTab.VIDEOS) {
+        if (selectedTab == MediaTab.VIDEOS && !compact) {
             Spacer(modifier = Modifier.height(12.dp))
             LinearStorageVisualization(stats = storageStats)
         }
@@ -194,6 +195,8 @@ fun RecentPlaybackSection(
     onAudioClick: (String) -> Unit,
     onViewAllClick: () -> Unit
 ) {
+    val access = com.arslandaim.omegaplayer.ui.feature.library.rememberHistoryAccess(recentPlayback)
+    if (access.items.isEmpty()) return
     Column(modifier = Modifier.padding(bottom = 8.dp)) {
         Row(
             modifier = Modifier
@@ -215,13 +218,15 @@ fun RecentPlaybackSection(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             contentPadding = PaddingValues(horizontal = 4.dp)
         ) {
-            items(recentPlayback, key = { it.uri }) { item ->
+            items(access.items, key = { it.uri }) { item ->
                 RecentPlaybackItem(
                     item = item,
                     onClick = {
-                        val encodedUri = URLEncoder.encode(item.uri, StandardCharsets.UTF_8.toString())
-                        if (item.mediaType == "video") onVideoClick(encodedUri)
-                        else onAudioClick(encodedUri)
+                        access.open(item) {
+                            val encodedUri = URLEncoder.encode(item.uri, StandardCharsets.UTF_8.toString())
+                            if (item.mediaType == "video") onVideoClick(encodedUri)
+                            else onAudioClick(encodedUri)
+                        }
                     }
                 )
             }

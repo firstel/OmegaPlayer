@@ -13,19 +13,23 @@ plugins {
 
 android {
     namespace = "com.arslandaim.omegaplayer"
-    compileSdk = 37
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.arslandaim.omegaplayer"
         minSdk = 25
-        targetSdk = 37
-        versionCode = 6
-        versionName = "1.2.1"
+        targetSdk = 36
+        versionCode = 20
+        versionName = "1.5.5"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
+        debug {
+            applicationIdSuffix = ".sdcard"
+            versionNameSuffix = "-sdcard"
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
@@ -85,6 +89,7 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.androidx.test.rules)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
 }

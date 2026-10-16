@@ -93,9 +93,21 @@ fun HomeScreen(
     initialTab: MediaTab? = null
 ) {
     val context = LocalContext.current
+    val isCompact = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp < 600
+    var showCompactSearch by rememberSaveable { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
+    DisposableEffect(lifecycle) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) viewModel.refreshVideos(context)
+        }
+        lifecycle.addObserver(observer)
+        onDispose { lifecycle.removeObserver(observer) }
+    }
+    val libraryError by viewModel.videoError.collectAsStateWithLifecycle()
     
     var selectedTab by rememberSaveable { mutableStateOf(initialTab ?: MediaTab.VIDEOS) }
+    var showDocumentFolders by rememberSaveable { mutableStateOf(false) }
     var isGridView by rememberSaveable { mutableStateOf(false) }
 
     val pagerState = rememberPagerState(
@@ -475,6 +487,14 @@ fun HomeScreen(
         }, onCreatePlaylist = { name -> audioViewModel.createPlaylist(name) })
     }
 
+    if (showDocumentFolders && isFocused) {
+        com.arslandaim.omegaplayer.ui.feature.folders.DocumentFolderBrowser(
+            onDismiss = { showDocumentFolders = false },
+            onVideoClick = onVideoClick,
+            onAudioClick = onAudioClick
+        )
+    }
+
     Scaffold(
         topBar = {
             Column(modifier = Modifier.background(MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)).statusBarsPadding()) {
@@ -496,20 +516,33 @@ fun HomeScreen(
                             }
                         }
                     },
+                    actions = {
+                        if (isCompact) {
+                            IconButton(onClick = { showCompactSearch = !showCompactSearch }) { Icon(Icons.Default.Search, "Search") }
+                        }
+                        IconButton(onClick = { viewModel.refreshVideos(context) }) { Icon(Icons.Default.Refresh, "Refresh videos") }
+                        IconButton(onClick = { showDocumentFolders = true }) { Icon(Icons.Default.FolderOpen, "Choose SD-card folder") }
+                    },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
                 )
-                if (currentSelectedFolder == null && selectedPlaylistForDetails == null) {
-                    HomeDashboard(selectedTab = selectedTab, storageStats = storageStats, onTabSelected = { tab -> selectedTab = tab })
+                if (!isCompact) TextButton(onClick = { showDocumentFolders = true }) {
+                    Icon(Icons.Default.FolderOpen, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("SD card folders")
                 }
-                Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                libraryError?.let { Text(it, modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.error) }
+                if (currentSelectedFolder == null && selectedPlaylistForDetails == null) {
+                    HomeDashboard(selectedTab = selectedTab, storageStats = storageStats, onTabSelected = { tab -> selectedTab = tab }, compact = isCompact)
+                }
+                if (!isCompact || showCompactSearch) Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     OutlinedTextField(value = searchQuery, onValueChange = { searchQuery = it }, modifier = Modifier.weight(1f), placeholder = { Text(stringResource(R.string.search_placeholder), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)) }, leadingIcon = { Icon(Icons.Default.Search, null, tint = MaterialTheme.colorScheme.primary) }, trailingIcon = { if (searchQuery.isNotEmpty()) { IconButton(onClick = { searchQuery = "" }) { Icon(Icons.Default.Close, null) } } }, shape = RoundedCornerShape(20.dp), colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = MaterialTheme.colorScheme.primary, unfocusedBorderColor = Color.Transparent, focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f), unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)), singleLine = true, textStyle = MaterialTheme.typography.bodyLarge)
                     Spacer(modifier = Modifier.width(8.dp))
                     IconButton(onClick = { isGridView = !isGridView }, modifier = Modifier.background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f), CircleShape)) { Icon(if (isGridView) Icons.Default.ViewList else Icons.Default.GridView, null, tint = MaterialTheme.colorScheme.primary) }
                 }
                 Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    val sectionLabel = if (currentSelectedFolder == null && selectedPlaylistForDetails == null) stringResource(R.string.no_folders_found).substringBefore(" ") else if (selectedPlaylistForDetails != null) stringResource(R.string.queue) else if (selectedTab == MediaTab.VIDEOS) stringResource(R.string.tab_videos) else stringResource(R.string.tab_audios)
+                    val sectionLabel = if (currentSelectedFolder == null && selectedPlaylistForDetails == null) stringResource(R.string.library_folders_heading) else if (selectedPlaylistForDetails != null) stringResource(R.string.queue) else if (selectedTab == MediaTab.VIDEOS) stringResource(R.string.tab_videos) else stringResource(R.string.tab_audios)
                     Text(text = sectionLabel, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface))
-                    if (currentSelectedFolder == null && selectedPlaylistForDetails == null) { Text(text = stringResource(R.string.items_count, currentFolders.size), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    if (currentSelectedFolder == null && selectedPlaylistForDetails == null) { Text(text = androidx.compose.ui.res.pluralStringResource(R.plurals.library_folder_count, currentFolders.size, currentFolders.size), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                 }
             }
         },
@@ -530,11 +563,11 @@ fun HomeScreen(
                     EmptyState(searchQuery.isNotEmpty(), false)
                 } else {
                     if (isGridView) {
-                        LazyVerticalGrid(columns = GridCells.Fixed(2), modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 16.dp + bottomPadding), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        LazyVerticalGrid(columns = if (isCompact) GridCells.Adaptive(160.dp) else GridCells.Fixed(2), modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 16.dp + bottomPadding), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             if (currentSelectedFolder == null && selectedPlaylistForDetails == null) {
-                                if (pageTab != MediaTab.PLAYLISTS && recentPlayback.isNotEmpty()) { item(span = { GridItemSpan(2) }) { RecentPlaybackSection(recentPlayback, onVideoClick, onAudioClick, onViewAllHistoryClick) } }
+                                if (pageTab != MediaTab.PLAYLISTS && recentPlayback.isNotEmpty()) { item(span = { GridItemSpan(maxLineSpan) }) { RecentPlaybackSection(recentPlayback, onVideoClick, onAudioClick, onViewAllHistoryClick) } }
                                 if (pageTab == MediaTab.PLAYLISTS) {
-                                    if (playlists.isNotEmpty()) { items(playlists, key = { it.id }, span = { GridItemSpan(2) }) { playlist -> PlaylistListItem(playlist, { selectedPlaylistForDetails = playlist }, { audioViewModel.deletePlaylist(playlist) }) } }
+                                    if (playlists.isNotEmpty()) { items(playlists, key = { it.id }, span = { GridItemSpan(maxLineSpan) }) { playlist -> PlaylistListItem(playlist, { selectedPlaylistForDetails = playlist }, { audioViewModel.deletePlaylist(playlist) }) } }
                                 } else {
                                     items(filteredFolders.keys.toList(), key = { it }) { folderName -> FolderGridItem(name = folderName, count = filteredFolders[folderName] ?: 0, onClick = { if (pageTab == MediaTab.VIDEOS) viewModel.setSelectedFolder(folderName) else audioViewModel.setSelectedFolder(folderName) }) }
                                 }
@@ -554,7 +587,7 @@ fun HomeScreen(
                                     if (playlists.isEmpty()) { item { Box(modifier = Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) { Text("No playlists yet", color = MaterialTheme.colorScheme.onSurfaceVariant) } } }
                                     else { items(playlists, key = { it.id }) { playlist -> PlaylistListItem(playlist = playlist, onClick = { selectedPlaylistForDetails = playlist }, onDelete = { audioViewModel.deletePlaylist(playlist) }) } }
                                 } else {
-                                    items(filteredFolders.keys.toList(), key = { it }) { folderName -> FolderListItem(name = folderName, count = filteredFolders[folderName] ?: 0, onClick = { if (pageTab == MediaTab.VIDEOS) viewModel.setSelectedFolder(folderName) else audioViewModel.setSelectedFolder(folderName) }, onDelete = { folderToDelete = folderName }, onMoveToLocker = { checkPinAndProceed { folderToMoveToLocker = folderName } }) }
+                                    items(filteredFolders.keys.toList(), key = { it }) { folderName -> FolderListItem(name = folderName, count = filteredFolders[folderName] ?: 0, onClick = { if (pageTab == MediaTab.VIDEOS) viewModel.setSelectedFolder(folderName) else audioViewModel.setSelectedFolder(folderName) }, canManage = pageTab != MediaTab.VIDEOS || viewModel.getVideosInFolder(folderName).none { it.isDocument }, onDelete = { folderToDelete = folderName }, onMoveToLocker = { checkPinAndProceed { folderToMoveToLocker = folderName } }) }
                                 }
                             } else if (selectedPlaylistForDetails != null) {
                                 items(playlistItems, key = { it.id }) { item -> MediaListItemInPlaylist(item = item, videos = videos, audios = audios, videoViewModel = viewModel, audioViewModel = audioViewModel, sharedTransitionScope = sharedTransitionScope, animatedVisibilityScope = animatedVisibilityScope, onVideoClick = onVideoClick, onAudioClick = onAudioClick, playlist = selectedPlaylistForDetails!!, onVideoLock = { checkPinAndProceed { selectedVideoForLocker = it } }, onAudioLock = { checkPinAndProceed { selectedAudioForLocker = it } }, onVideoDelete = { selectedVideoForDelete = it }, onAudioDelete = { selectedAudioForDelete = it }) }

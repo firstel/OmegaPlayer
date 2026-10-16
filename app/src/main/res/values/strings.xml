@@ -161,4 +161,35 @@
     <string name="unknown_title">Unknown Title</string>
     <string name="queue">Queue</string>
     <string name="next_track">Next Track</string>
+    <string name="library_folders_heading">Folders</string>
+    <plurals name="library_folder_count">
+        <item quantity="one">%d folder</item>
+        <item quantity="other">%d folders</item>
+    </plurals>
+    <string name="second_screen_title">Playback controls</string>
+    <string name="second_screen_hint">Video stays on the main screen. Tap it to turn these controls off.</string>
+    <string name="second_screen_enable">Bottom-screen controls</string>
+    <string name="second_screen_disable">Turn off bottom controls</string>
+    <string name="second_screen_missing">No second screen is available. Enable the Thor’s bottom screen and try again.</string>
+    <string name="vault_storage_notice">Vault files are stored inside this app. Uninstalling the app or clearing its data deletes them. Keep a separate backup of important videos.</string>
+    <string name="vault_setup_next">Next: recovery</string>
+    <string name="vault_setup_create">Create vault</string>
+    <string name="vault_setup_pin">Choose a 4-digit PIN</string>
+    <string name="vault_setup_recovery">Set a recovery question</string>
+    <string name="bottom_back_ten">−10 sec</string>
+    <string name="bottom_forward_ten">+10 sec</string>
+    <string name="bottom_play">Play</string>
+    <string name="bottom_pause">Pause</string>
+    <string name="bottom_stop">Stop</string>
+    <string name="bottom_mute">Mute</string>
+    <string name="bottom_unmute">Unmute</string>
+    <string name="bottom_speed">Speed %1$.2f×</string>
+    <string name="bottom_close">Close video</string>
+    <string name="bottom_volume_down">Volume −</string>
+    <string name="bottom_volume_up">Volume +</string>
+    <string name="bottom_volume_level">Media volume %1$d%%</string>
+    <string name="bottom_preview_at">Seek to approximately %1$s</string>
+    <string name="audio_missing_track">This video has no audio track.</string>
+    <string name="audio_unsupported_track">This video’s audio format isn’t supported on this device.</string>
+    <string name="audio_disabled_track">No audio track is selected.</string>
 </resources>

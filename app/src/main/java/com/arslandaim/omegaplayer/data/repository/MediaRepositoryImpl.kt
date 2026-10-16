@@ -2,6 +2,7 @@ package com.arslandaim.omegaplayer.data.repository
 
 import android.content.ContentUris
 import android.content.Context
+import android.content.SharedPreferences
 import android.database.ContentObserver
 import android.net.Uri
 import android.os.Handler
@@ -13,6 +14,10 @@ import com.arslandaim.omegaplayer.data.VideoModel
 import com.arslandaim.omegaplayer.util.Resource
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import com.arslandaim.omegaplayer.data.storage.DocumentVideoLibrary
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -27,6 +32,8 @@ import javax.inject.Singleton
 class MediaRepositoryImpl @Inject constructor(
     @ApplicationContext private val context: Context
 ) : MediaRepository {
+    private val videoScanMutex = Mutex()
+    private val documentVideos = DocumentVideoLibrary(context)
 
     @OptIn(FlowPreview::class)
     override fun getAudios(): Flow<Resource<List<AudioModel>>> = callbackFlow {
@@ -59,10 +66,21 @@ class MediaRepositoryImpl @Inject constructor(
             true,
             observer
         )
-        trySend(Resource.Loading)
-        trySend(fetchVideos())
-        awaitClose {
+        val preferences = context.getSharedPreferences("document_folders", Context.MODE_PRIVATE)
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            if (key == "tree_uri") launch {
+                trySend(Resource.Loading)
+                trySend(fetchVideos())
+            }
+        }
+        preferences.registerOnSharedPreferenceChangeListener(listener)
+        try {
+            trySend(Resource.Loading)
+            trySend(fetchVideos())
+            awaitClose { }
+        } finally {
             context.contentResolver.unregisterContentObserver(observer)
+            preferences.unregisterOnSharedPreferenceChangeListener(listener)
         }
     }.debounce(300).flowOn(Dispatchers.IO)
 
@@ -124,7 +142,7 @@ class MediaRepositoryImpl @Inject constructor(
         return Resource.Success(list)
     }
 
-    private fun fetchVideos(): Resource<List<VideoModel>> {
+    private suspend fun fetchVideos(): Resource<List<VideoModel>> = videoScanMutex.withLock {
         val list = mutableListOf<VideoModel>()
         val projection = arrayOf(
             MediaStore.Video.Media._ID,
@@ -163,8 +181,17 @@ class MediaRepositoryImpl @Inject constructor(
             }
         } catch (e: Exception) {
             Log.e("MediaRepository", "Error fetching videos", e)
-            return Resource.Error("Failed to fetch videos", e)
+            // SAF access is independent of the library's broad media permission.
         }
-        return Resource.Success(list)
+        val documents = try {
+            documentVideos.scan()
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            Log.w("MediaRepository", "Selected video folder is unavailable", error)
+            if (list.isEmpty()) return@withLock Resource.Error("SD-card folder unavailable. Reinsert the card or choose the folder again.", error)
+            emptyList()
+        }
+        Resource.Success(documentVideos.merge(list, documents))
     }
 }

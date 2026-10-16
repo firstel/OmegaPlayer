@@ -11,6 +11,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.MediaItem
+import com.arslandaim.omegaplayer.media.isVideoItem
+import com.arslandaim.omegaplayer.media.playbackUri
 import com.arslandaim.omegaplayer.media.PlaybackConnection
 
 @Composable
@@ -25,7 +27,7 @@ fun NowPlayingBar(
     val mediaController by playbackConnection.mediaController.collectAsStateWithLifecycle()
 
     val isVideo = remember(currentMediaItem) {
-        isVideoMediaItem(currentMediaItem)
+        currentMediaItem?.isVideoItem() == true
     }
 
     AnimatedVisibility(
@@ -35,7 +37,7 @@ fun NowPlayingBar(
         modifier = modifier
     ) {
         val item = currentMediaItem ?: return@AnimatedVisibility
-        val uriString = item.localConfiguration?.uri?.toString() ?: ""
+        val uriString = item.playbackUri()?.toString() ?: ""
 
         if (isVideo) {
             VideoMiniPlayer(
@@ -69,13 +71,4 @@ fun NowPlayingBar(
             )
         }
     }
-}
-
-private fun isVideoMediaItem(mediaItem: MediaItem?): Boolean {
-    if (mediaItem == null) return false
-    val uriStr = mediaItem.localConfiguration?.uri?.toString()?.lowercase() ?: ""
-    val mimeType = mediaItem.localConfiguration?.mimeType?.lowercase() ?: ""
-    if (mimeType.startsWith("video/")) return true
-    val videoExtensions = listOf(".mp4", ".mkv", ".webm", ".avi", ".mov", ".3gp", ".m4v", ".flv", ".ts")
-    return videoExtensions.any { uriStr.contains(it) }
 }

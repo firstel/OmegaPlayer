@@ -12,6 +12,7 @@ import androidx.biometric.BiometricPrompt
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -126,163 +127,41 @@ fun LockerAuthScreen(
     onBack: () -> Unit,
     bottomPadding: androidx.compose.ui.unit.Dp = 0.dp
 ) {
-    BackHandler(onBack = onBack)
-    
     val context = LocalContext.current
     val activity = context as? FragmentActivity
     val scope = rememberCoroutineScope()
-    var pinInput by remember { mutableStateOf("") }
-    val scrollState = rememberScrollState()
-    
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(scrollState)
-            .padding(horizontal = 24.dp)
-            .padding(top = 24.dp, bottom = 24.dp + bottomPadding),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-//        Icon(
-//            Icons.Default.Lock,
-//            contentDescription = null,
-//            tint = Color(0xFFFF6600),
-//            modifier = Modifier.size(64.dp)
-//        )
-//        Spacer(modifier = Modifier.height(24.dp))
-        Text(
-            stringResource(R.string.locker_title),
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.ExtraBold
-        )
-        Text(
-            stringResource(R.string.enter_pin_sub),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
-        )
-        
-        Spacer(modifier = Modifier.height(15.dp))
-        
-        // PIN Dots
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.padding(16.dp)
-        ) {
-            repeat(4) { index ->
-                val filled = index < pinInput.length
-                Box(
-                    modifier = Modifier
-                        .size(16.dp)
-                        .clip(CircleShape)
-                        .background(
-                            if (filled) MaterialTheme.colorScheme.primary 
-                            else MaterialTheme.colorScheme.surfaceVariant
-                        )
-                )
+
+    LockerPinInput(
+        modifier = Modifier.statusBarsPadding().padding(bottom = bottomPadding),
+        verify = { submitted ->
+            val settings = viewModel.getSettings()
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                settings?.pin == SecurityUtils.hashString(submitted)
+            }
+        },
+        onUnlocked = { viewModel.unlock(true) },
+        onIncorrect = { Toast.makeText(context, "Incorrect PIN", Toast.LENGTH_SHORT).show() },
+        onBiometric = {
+            scope.launch {
+                val settings = viewModel.getSettings()
+                if (settings?.isBiometricEnabled == true && activity != null) {
+                    authenticateBiometric(activity, { viewModel.unlock(true) }, { errorCode, error ->
+                        if (errorCode != BiometricPrompt.ERROR_USER_CANCELED && errorCode != BiometricPrompt.ERROR_NEGATIVE_BUTTON)
+                            Toast.makeText(context, "Authentication failed: $error", Toast.LENGTH_SHORT).show()
+                    })
+                } else Toast.makeText(context, "Biometric unlock not enabled in Settings", Toast.LENGTH_SHORT).show()
             }
         }
-        
-        Spacer(modifier = Modifier.height(32.dp))
-        
-        // Number Pad
-        Column(
-            modifier = Modifier.fillMaxWidth(0.8f),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            val buttons = listOf(
-                listOf("1", "2", "3"),
-                listOf("4", "5", "6"),
-                listOf("7", "8", "9"),
-                listOf("Back", "0", "OK")
-            )
-            
-            buttons.forEach { row ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    row.forEach { label ->
-                        NumButton(
-                            label = label,
-                            modifier = Modifier.weight(1f),
-                            onClick = {
-                                when (label) {
-                                    "Back" -> if (pinInput.isNotEmpty()) pinInput = pinInput.dropLast(1)
-                                    "OK" -> {
-                                        scope.launch {
-                                            val settings = viewModel.getSettings()
-                                            val hashedInput = SecurityUtils.hashString(pinInput)
-                                            if (settings?.pin == hashedInput) {
-                                                viewModel.unlock(true)
-                                            } else {
-                                                Toast.makeText(context, "Incorrect PIN", Toast.LENGTH_SHORT).show()
-                                                pinInput = ""
-                                            }
-                                        }
-                                    }
-                                    else -> if (pinInput.length < 4) {
-                                        pinInput += label
-                                        if (pinInput.length == 4) {
-                                            // Auto verify
-                                            scope.launch {
-                                                val settings = viewModel.getSettings()
-                                                val hashedInput = SecurityUtils.hashString(pinInput)
-                                                if (settings?.pin == hashedInput) {
-                                                    viewModel.unlock(true)
-                                                } else {
-                                                    Toast.makeText(context, "Incorrect PIN", Toast.LENGTH_SHORT).show()
-                                                    pinInput = ""
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        )
-                    }
-                }
-            }
-        }
-        
-        Spacer(modifier = Modifier.height(32.dp))
-        
-        // Fingerprint Button instead of Cancel
-        FilledTonalIconButton(
-            onClick = {
-                scope.launch {
-                    val settings = viewModel.getSettings()
-                    if (settings?.isBiometricEnabled == true && activity != null) {
-                        authenticateBiometric(activity, {
-                            viewModel.unlock(true)
-                        }, { errorCode, error ->
-                            if (errorCode != BiometricPrompt.ERROR_USER_CANCELED && 
-                                errorCode != BiometricPrompt.ERROR_NEGATIVE_BUTTON) {
-                                Toast.makeText(context, "Authentication failed: $error", Toast.LENGTH_SHORT).show()
-                            }
-                        })
-                    } else {
-                        Toast.makeText(context, "Biometric unlock not enabled in Settings", Toast.LENGTH_SHORT).show()
-                    }
-                }
-            },
-            modifier = Modifier.size(64.dp),
-            shape = CircleShape
-        ) {
-            Icon(
-                Icons.Default.Fingerprint,
-                contentDescription = "Fingerprint Unlock",
-                modifier = Modifier.size(32.dp)
-            )
-        }
-    }
+    )
 }
 
 @Composable
 fun NumButton(label: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val isAction = label == "Back" || label == "OK"
+    val context = LocalContext.current
+    val feedback = remember(context) { com.arslandaim.omegaplayer.ui.common.PlaybackHaptics(context) }
     Surface(
-        onClick = onClick,
+        onClick = { feedback.pulse(); onClick() },
         modifier = modifier.aspectRatio(1f),
         shape = CircleShape,
         color = if (isAction) MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f) 
@@ -291,10 +170,10 @@ fun NumButton(label: String, modifier: Modifier = Modifier, onClick: () -> Unit)
         Box(contentAlignment = Alignment.Center) {
             when (label) {
                 "Back" -> {
-                    Icon(Icons.AutoMirrored.Filled.Backspace, contentDescription = null)
+                    Icon(Icons.AutoMirrored.Filled.Backspace, contentDescription = "Delete last digit")
                 }
                 "OK" -> {
-                    Icon(Icons.Default.Check, contentDescription = null)
+                    Icon(Icons.Default.Check, contentDescription = "Unlock")
                 }
                 else -> {
                     Text(
@@ -316,92 +195,105 @@ fun LockerSetupScreen(
     bottomPadding: androidx.compose.ui.unit.Dp = 0.dp
 ) {
     var pin by remember { mutableStateOf("") }
+    var confirmation by remember { mutableStateOf("") }
     var question by remember { mutableStateOf("") }
     var answer by remember { mutableStateOf("") }
-    val scope = rememberCoroutineScope()
-    val scrollState = rememberScrollState()
+    var recoveryStep by remember { mutableStateOf(false) }
+    var saving by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+    val keyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+    val setupScroll = rememberScrollState()
+    LaunchedEffect(recoveryStep) { setupScroll.scrollTo(0) }
+    BackHandler(enabled = recoveryStep) {
+        focusManager.clearFocus()
+        keyboard?.hide()
+        recoveryStep = false
+    }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(scrollState)
-            .padding(horizontal = 24.dp)
-            .padding(top = 24.dp, bottom = 24.dp + bottomPadding)
-            .statusBarsPadding(),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = stringResource(R.string.setup_pin_title),
-            style = MaterialTheme.typography.headlineLarge.copy(
-                fontWeight = FontWeight.ExtraBold,
-                brush = Brush.linearGradient(
-                    colors = listOf(
-                        MaterialTheme.colorScheme.error,
-                        MaterialTheme.colorScheme.primary,
-                        MaterialTheme.colorScheme.secondary
-                    )
-                )
-            )
-        )
-        Text(
-            stringResource(R.string.setup_pin_sub),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        
-        Spacer(modifier = Modifier.height(48.dp))
-        
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
-        ) {
-            Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                OutlinedTextField(
-                    value = pin,
-                    onValueChange = { if (it.length <= 4) pin = it },
-                    label = { Text(stringResource(R.string.pin_label)) },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-                    visualTransformation = PasswordVisualTransformation(),
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
-                )
-                
-                OutlinedTextField(
-                    value = question,
-                    onValueChange = { question = it },
-                    label = { Text(stringResource(R.string.security_question_title)) },
-                    placeholder = { Text(stringResource(R.string.security_question_sub)) },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
-                )
-                
-                OutlinedTextField(
-                    value = answer,
-                    onValueChange = { answer = it },
-                    label = { Text(stringResource(R.string.your_answer_label)) },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
-                )
+    BoxWithConstraints(Modifier.fillMaxSize().imePadding().padding(bottom = bottomPadding)) {
+        val wide = maxWidth >= 600.dp && maxWidth > maxHeight
+        val introduction: @Composable () -> Unit = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("Create private vault", style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold)
+                Text(if (recoveryStep) "Step 2 of 2 · Recovery" else "Step 1 of 2 · PIN",
+                    color = MaterialTheme.colorScheme.primary)
+                Text(stringResource(R.string.vault_storage_notice),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
-        
-        Spacer(modifier = Modifier.weight(1f))
-
-        Button(
-            onClick = {
-                if (pin.length == 4 && question.isNotBlank() && answer.isNotBlank()) {
-                    viewModel.saveSettings(LockerSettings(pin = pin, securityQuestion = question, securityAnswer = answer))
+        val form: @Composable () -> Unit = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(stringResource(if (recoveryStep) R.string.vault_setup_recovery else R.string.vault_setup_pin),
+                    style = MaterialTheme.typography.titleMedium)
+                if (!recoveryStep) {
+                    OutlinedTextField(value = pin,
+                        onValueChange = { pin = it.filter { digit -> digit in '0'..'9' }.take(4) },
+                        label = { Text(stringResource(R.string.pin_label)) },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                        visualTransformation = PasswordVisualTransformation(),
+                        modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = confirmation,
+                        onValueChange = { confirmation = it.filter { digit -> digit in '0'..'9' }.take(4) },
+                        label = { Text("Confirm PIN") }, singleLine = true,
+                        isError = confirmation.length == 4 && confirmation != pin,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                        visualTransformation = PasswordVisualTransformation(),
+                        modifier = Modifier.fillMaxWidth())
+                } else {
+                    OutlinedTextField(value = question, onValueChange = { question = it },
+                        label = { Text(stringResource(R.string.security_question_title)) },
+                        singleLine = true, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = answer, onValueChange = { answer = it },
+                        label = { Text(stringResource(R.string.your_answer_label)) },
+                        singleLine = true, visualTransformation = PasswordVisualTransformation(),
+                        modifier = Modifier.fillMaxWidth())
                 }
-            },
-            modifier = Modifier.fillMaxWidth().height(56.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
-            )
-        ) {
-            Text(stringResource(R.string.setup_pin_title), fontWeight = FontWeight.Bold)
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    if (recoveryStep) TextButton(onClick = {
+                        focusManager.clearFocus()
+                        keyboard?.hide()
+                        recoveryStep = false
+                    }) { Text("Back") }
+                    Button(onClick = {
+                        focusManager.clearFocus()
+                        keyboard?.hide()
+                        if (!recoveryStep) recoveryStep = true
+                        else {
+                            saving = true
+                            viewModel.saveSettings(LockerSettings(pin = pin,
+                                securityQuestion = question.trim(), securityAnswer = answer.trim())) { success ->
+                                saving = false
+                                if (!success) Toast.makeText(context, "Could not save vault settings. Please try again.", Toast.LENGTH_LONG).show()
+                            }
+                        }
+                    }, enabled = !saving && (if (recoveryStep) question.isNotBlank() && answer.isNotBlank()
+                        else pin.length == 4 && pin == confirmation),
+                        modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
+                        if (saving) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                        else Text(stringResource(if (recoveryStep) R.string.vault_setup_create else R.string.vault_setup_next))
+                    }
+                }
+            }
+        }
+        if (wide) {
+            Row(Modifier.fillMaxSize().verticalScroll(setupScroll).padding(24.dp),
+                horizontalArrangement = Arrangement.spacedBy(32.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.weight(1f)) { introduction() }
+                Box(Modifier.weight(1f).widthIn(max = 480.dp)) { key(recoveryStep) { form() } }
+            }
+        } else {
+            Column(Modifier.fillMaxSize().verticalScroll(setupScroll)
+                .wrapContentWidth(Alignment.CenterHorizontally).widthIn(max = 480.dp).padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(24.dp)) {
+                introduction()
+                key(recoveryStep) { form() }
+            }
         }
     }
 }
@@ -426,6 +318,20 @@ fun LockedVideosList(
     val scope = rememberCoroutineScope()
     val dao = remember { LockerDatabase.getDatabase(context).lockerDao() }
     var isProcessing by remember { mutableStateOf(false) }
+    var pendingDelete by remember { mutableStateOf<com.arslandaim.omegaplayer.data.LockedVideo?>(null) }
+    pendingDelete?.let { video ->
+        VaultDeleteDialog(video, onDismiss = { pendingDelete = null }, onConfirm = {
+            pendingDelete = null
+            scope.launch {
+                isProcessing = true
+                try {
+                    val deleted = deleteVaultCopy(context, video, dao)
+                    if (deleted) onRefresh()
+                    Toast.makeText(context, if (deleted) "Deleted from vault" else "Could not delete vault video. Please try again.", Toast.LENGTH_LONG).show()
+                } finally { isProcessing = false }
+            }
+        })
+    }
     
     // Group videos by folder origin
     val groupedVideos = remember(videos) {
@@ -474,7 +380,7 @@ fun LockedVideosList(
                 // Show videos in the selected folder
                 val folderVideos = groupedVideos[expandedFolder] ?: emptyList()
                 LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
+                    columns = GridCells.Adaptive(160.dp),
                     modifier = contentModifier,
                     contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp + bottomPadding),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -484,6 +390,7 @@ fun LockedVideosList(
                         VaultItem(
                             video = video,
                             onClick = { onVideoClick(video.lockerPath) },
+                            onDelete = { if (!isProcessing) pendingDelete = video },
                             onUnlock = {
                                 scope.launch {
                                     isProcessing = true
@@ -501,7 +408,7 @@ fun LockedVideosList(
             } else {
                 // Show folders and individual videos
                 LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
+                    columns = GridCells.Adaptive(160.dp),
                     modifier = contentModifier,
                     contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp + bottomPadding),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -540,6 +447,7 @@ fun LockedVideosList(
                         VaultItem(
                             video = video,
                             onClick = { onVideoClick(video.lockerPath) },
+                            onDelete = { if (!isProcessing) pendingDelete = video },
                             onUnlock = {
                                 scope.launch {
                                     isProcessing = true
@@ -623,14 +531,16 @@ fun VaultFolderItem(
 fun VaultItem(
     video: com.arslandaim.omegaplayer.data.LockedVideo,
     onClick: () -> Unit,
-    onUnlock: () -> Unit
+    onUnlock: () -> Unit,
+    onDelete: () -> Unit = {}
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(0.8f)
             .clip(RoundedCornerShape(20.dp))
-            .clickable(onClick = onClick),
+            .combinedClickable(onClick = onClick, onLongClick = onDelete,
+                onLongClickLabel = "Delete from vault"),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
     ) {
@@ -701,4 +611,17 @@ fun EmptyVaultState() {
             Text(stringResource(R.string.locker_empty), color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
+}
+
+@Composable
+internal fun VaultDeleteDialog(
+    video: com.arslandaim.omegaplayer.data.LockedVideo,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    AlertDialog(onDismissRequest = onDismiss,
+        title = { Text("Delete from vault?") },
+        text = { Text("Permanently delete “${video.name}” from the vault? This cannot be undone. Any original outside the vault will remain unchanged.") },
+        confirmButton = { TextButton(onClick = onConfirm) { Text("Delete", color = MaterialTheme.colorScheme.error) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } })
 }

@@ -1,0 +1,24 @@
+<resources>
+    <item name="bottom_seek_back" type="id" />
+    <item name="bottom_seek_forward" type="id" />
+    <item name="bottom_play_pause" type="id" />
+    <item name="bottom_stop" type="id" />
+    <item name="bottom_mute" type="id" />
+    <item name="bottom_speed" type="id" />
+    <item name="bottom_close" type="id" />
+    <item name="bottom_volume_down" type="id" />
+    <item name="bottom_volume_up" type="id" />
+    <item name="bottom_timeline" type="id" />
+    <item name="bottom_volume_level" type="id" />
+    <item name="bottom_vr" type="id" />
+    <item name="bottom_eye" type="id" />
+    <item name="bottom_recenter" type="id" />
+    <item name="bottom_motion" type="id" />
+    <item name="bottom_look_left" type="id" />
+    <item name="bottom_look_up" type="id" />
+    <item name="bottom_look_down" type="id" />
+    <item name="bottom_look_right" type="id" />
+    <item name="bottom_zoom_out" type="id" />
+    <item name="bottom_zoom_in" type="id" />
+    <item name="bottom_haptics" type="id" />
+</resources>

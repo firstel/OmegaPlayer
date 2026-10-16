@@ -6,10 +6,14 @@
 
 package com.arslandaim.omegaplayer.ui.feature.player
 
+import kotlinx.coroutines.launch
 import android.app.Activity
 import android.content.Context
 import android.content.pm.ActivityInfo
 import android.net.Uri
+import com.arslandaim.omegaplayer.media.videoMediaItem
+import com.arslandaim.omegaplayer.media.prepareVideoItem
+import com.arslandaim.omegaplayer.media.playbackUri
 import android.util.Log
 import android.view.LayoutInflater
 import android.widget.Toast
@@ -42,8 +46,6 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -85,7 +87,6 @@ fun PlayerScreen(
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
-    val haptic = LocalHapticFeedback.current
     val view = LocalView.current
     val activity = context as? Activity
     val hazeState = remember { HazeState() }
@@ -113,10 +114,32 @@ fun PlayerScreen(
     
 
     // MX Player States (Local to this session)
-    var volume by remember { mutableFloatStateOf(0.5f) }
+    val deviceVolume = remember(context) { DeviceMediaVolume(context) }
+    var volume by remember { mutableFloatStateOf(deviceVolume.fraction) }
     var brightness by remember { mutableFloatStateOf(0.5f) }
     var isControlsVisible by remember { mutableStateOf(true) }
     var isLocked by remember { mutableStateOf(false) }
+    val vr180 = remember(videoUri) { Vr180State() }
+    var vrView by remember { mutableStateOf<Vr180View?>(null) }
+    val currentLocked by rememberUpdatedState(isLocked)
+    val currentBack by rememberUpdatedState(onBack)
+    val feedback = remember(context) { com.arslandaim.omegaplayer.ui.common.PlaybackHaptics(context) }
+    val controlActions = remember(mediaController, vr180) {
+        val sensors = context.getSystemService(android.hardware.SensorManager::class.java)
+        vr180.motionAvailable = sensors.getDefaultSensor(android.hardware.Sensor.TYPE_GAME_ROTATION_VECTOR) != null ||
+            sensors.getDefaultSensor(android.hardware.Sensor.TYPE_ROTATION_VECTOR) != null
+        PlayerControlActions(mediaController, deviceVolume, vr180, feedback = { feedback.pulse(it) },
+            onClosing = { viewModel.savePlaybackProgress() }, onClosed = { currentBack() })
+    }
+    val gamepad = remember(mediaController, vr180) {
+        GamepadPlaybackControls(mediaController, vr180, action = { controlActions.perform(it) },
+            feedback = { feedback.pulse(com.arslandaim.omegaplayer.ui.common.Pulse.SKIP) }) { currentLocked }
+    }
+    DisposableEffect(gamepad, activity) {
+        val host = activity as? com.arslandaim.omegaplayer.MainActivity
+        host?.gamepadControls = gamepad
+        onDispose { gamepad.reset(); host?.let { if (it.gamepadControls === gamepad) it.gamepadControls = null } }
+    }
     var playbackError by remember { mutableStateOf<String?>(null) }
 
     // Back handler to handle custom navigation and lock state
@@ -146,14 +169,30 @@ fun PlayerScreen(
 
     LaunchedEffect(videoUri, mediaController) {
         val player = mediaController ?: return@LaunchedEffect
+        val detectionRevision = vr180.startVideo()
         val newUri = Uri.parse(videoUri)
-        val currentUri = player.currentMediaItem?.localConfiguration?.uri
+        val currentUri = player.currentMediaItem?.playbackUri()
+        launch {
+            val detected = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                detectSbsVideo(context.applicationContext, newUri)
+            }
+            vr180.detectedSbs(detectionRevision, detected)
+        }
         if (currentUri != newUri) {
             playbackError = null
+            playbackSpeed = 1f
             player.stop()
             player.clearMediaItems()
-            player.setMediaItem(MediaItem.fromUri(newUri))
-            player.prepare()
+            val details = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                val name = videosList.firstOrNull { it.uri == newUri }?.name ?: runCatching {
+                    context.contentResolver.query(newUri,
+                        arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+                        if (cursor.moveToFirst()) cursor.getString(0) else null
+                    }
+                }.getOrNull() ?: newUri.lastPathSegment?.substringAfterLast('/') ?: "Video"
+                name to runCatching { context.contentResolver.getType(newUri) }.getOrNull()
+            }
+            prepareVideoItem(player, videoMediaItem(newUri, details.first, details.second))
         }
         player.playWhenReady = true
     }
@@ -258,6 +297,7 @@ fun PlayerScreen(
     var showSeekBackwardAnimation by remember { mutableStateOf(false) }
     var scale by remember { mutableFloatStateOf(1f) }
     var panOffset by remember { mutableStateOf(Offset.Zero) }
+    LaunchedEffect(vr180.recenter) { scale=1f; panOffset=Offset.Zero }
     val transformState = rememberTransformableState { zoomChange, offsetChange, _ ->
         if (!isLocked) {
             scale = (scale * zoomChange).coerceIn(1f, 5f)
@@ -287,6 +327,7 @@ fun PlayerScreen(
             mediaController?.let {
                 currentPosition = it.currentPosition
                 duration = it.duration
+                volume = deviceVolume.fraction
             }
             delay(500.milliseconds)
         }
@@ -295,7 +336,19 @@ fun PlayerScreen(
     val videoName = videoUri.substringAfterLast("/").substringBeforeLast(".")
 
     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
-        with(sharedTransitionScope) {
+        if (vr180.enabled) {
+            AndroidView(factory = { ctx -> Vr180View(ctx, vr180).also { vrView = it } },
+                update = { it.bind(mediaController) },
+                onRelease = { it.close(); if (vrView === it) vrView = null },
+                modifier = Modifier.fillMaxSize().pointerInput(vr180, isLocked) {
+                    detectTapGestures(onTap = { isControlsVisible = !isControlsVisible })
+                }.pointerInput(vr180, isLocked) {
+                    if (!isLocked) detectDragGestures { change, drag ->
+                        change.consume()
+                        vr180.look(-drag.x / size.width * 100f, drag.y / size.height * 80f)
+                    }
+                })
+        } else with(sharedTransitionScope) {
             AndroidView(
                 factory = { ctx ->
                     val view = LayoutInflater.from(ctx).inflate(R.layout.player_view, null) as PlayerView
@@ -313,7 +366,7 @@ fun PlayerScreen(
                     }
                 },
                 onRelease = { playerView ->
-                    if (!currentBackgroundPlay.value) {
+                    if (!currentBackgroundPlay.value || vr180.enabled) {
                         playerView.player = null
                     }
                 },
@@ -326,18 +379,20 @@ fun PlayerScreen(
                         exit = fadeOut(),
                         resizeMode = SharedTransitionScope.ResizeMode.scaleToBounds()
                     )
-                    .graphicsLayer(
-                        scaleX = scale,
-                        scaleY = scale,
-                        translationX = panOffset.x,
-                        translationY = panOffset.y
-                    )
+                    .graphicsLayer {
+                        val factor=(scale*vr180.zoom).coerceIn(1f,5f)
+                        scaleX=factor; scaleY=factor
+                        val horizontal=size.width*(factor-1f)/2f
+                        val vertical=size.height*(factor-1f)/2f
+                        translationX=(panOffset.x-vr180.yaw/89f*horizontal).coerceIn(-horizontal,horizontal)
+                        translationY=(panOffset.y+vr180.pitch/85f*vertical).coerceIn(-vertical,vertical)
+                    }
                     .transformable(state = transformState)
             )
         }
 
-        // Gesture Overlay
-        Box(
+        // The VR surface uses drag-to-look instead of seek/volume gestures.
+        if (!vr180.enabled) Box(
             modifier = Modifier
                 .fillMaxSize()
                 .pointerInput(isLocked) {
@@ -348,7 +403,7 @@ fun PlayerScreen(
                             onTap = { isControlsVisible = !isControlsVisible },
                             onDoubleTap = { offset ->
                                 val player = mediaController ?: return@detectTapGestures
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                feedback.pulse()
                                 if (offset.x < size.width / 2) {
                                     player.seekBack()
                                     showSeekBackwardAnimation = true
@@ -367,7 +422,7 @@ fun PlayerScreen(
                                     showPlayPausePulse = true
                                 }
                                 pulseTrigger++
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                feedback.pulse()
                             }
                         )
                     }
@@ -382,7 +437,7 @@ fun PlayerScreen(
                             onDragEnd = {
                                 if (isSeekHUDVisible) {
                                     mediaController?.let { it.seekTo(it.currentPosition + seekOffsetHUD) }
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    feedback.pulse()
                                 }
                                 isSeekHUDVisible = false
                                 isVolumeVisible = false
@@ -396,14 +451,14 @@ fun PlayerScreen(
                                     val oldOffset = seekOffsetHUD
                                     seekOffsetHUD += (dragAmount.x * 100).toLong()
                                     if (abs(seekOffsetHUD / 5000) != abs(oldOffset / 5000)) {
-                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        feedback.pulse()
                                     }
                                 } else if (!isSeekHUDVisible) {
                                     if (change.position.x < width / 2) {
                                         val oldBrightness = brightness
                                         brightness = (brightness - dragAmount.y / height).coerceIn(0f, 1f)
                                         if (abs(brightness - oldBrightness) > 0.05f) {
-                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                            feedback.pulse()
                                         }
                                         setBrightness(context, brightness)
                                         isBrightnessVisible = true
@@ -411,9 +466,10 @@ fun PlayerScreen(
                                         val oldVolume = volume
                                         volume = (volume - dragAmount.y / height).coerceIn(0f, 1f)
                                         if (abs(volume - oldVolume) > 0.05f) {
-                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                            feedback.pulse()
                                         }
-                                        mediaController?.volume = volume
+                                        deviceVolume.setFraction(volume)
+                                        mediaController?.volume = 1f
                                         isVolumeVisible = true
                                     }
                                 }
@@ -422,6 +478,23 @@ fun PlayerScreen(
                     }
                 }
         )
+
+        Box(Modifier.align(Alignment.CenterEnd).padding(16.dp)
+            .then(if (isControlsVisible && !isLocked) Modifier else Modifier.size(0.dp))
+            .background(Color.Black.copy(alpha = 0.65f), RoundedCornerShape(20.dp))) {
+            SecondScreenControlsButton(mediaController, isLocked, videoUri,
+                onVideoClosing = { viewModel.savePlaybackProgress() }, onVideoClosed = onBack, vr180 = vr180, gamepad = gamepad, controls = controlActions)
+        }
+
+        DisposableEffect(vrView, lifecycleOwner) {
+            val target = vrView
+            val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+                if (event == androidx.lifecycle.Lifecycle.Event.ON_STOP) target?.onPause()
+                if (event == androidx.lifecycle.Lifecycle.Event.ON_START) target?.onResume()
+            }
+            lifecycleOwner.lifecycle.addObserver(observer)
+            onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+        }
 
         // Lock Icon HUD
         if (isControlsVisible || isLocked) {

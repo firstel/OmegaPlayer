@@ -1,0 +1,83 @@
+package com.arslandaim.omegaplayer.ui
+
+import android.Manifest
+import android.content.ContentValues
+import android.content.pm.ActivityInfo
+import android.graphics.Bitmap
+import android.provider.MediaStore
+import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.test.*
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.test.rule.GrantPermissionRule
+import com.arslandaim.omegaplayer.MainActivity
+import org.junit.Rule
+import org.junit.Test
+import java.io.File
+
+class MainLandscapeTest {
+    @get:Rule(order = 0) val permissions: GrantPermissionRule = GrantPermissionRule.grant(
+        Manifest.permission.READ_MEDIA_VIDEO, Manifest.permission.READ_MEDIA_AUDIO)
+    @get:Rule(order = 1) val compose = createAndroidComposeRule<MainActivity>()
+
+    private fun screenshot(name: String) {
+        val context = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext
+        val resolver = context.contentResolver
+        val uri = resolver.insert(android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+            android.content.ContentValues().apply {
+                put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, "$name.png")
+                put(android.provider.MediaStore.Images.Media.MIME_TYPE, "image/png")
+                put(android.provider.MediaStore.Images.Media.RELATIVE_PATH, "Pictures/OmegaPlayerLayout")
+            })!!
+        resolver.openOutputStream(uri)!!.use {
+            compose.onRoot().captureToImage().asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, it)
+        }
+    }
+
+    @Test fun populatedLibraryAndNavigationFitLandscape() {
+        compose.activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+        val resolver = compose.activity.contentResolver
+        val uri = resolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, ContentValues().apply {
+            put(MediaStore.Video.Media.DISPLAY_NAME, "Landscape test.mp4")
+            put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
+            put(MediaStore.Video.Media.RELATIVE_PATH, "Movies/OmegaLayoutCheck")
+            put(MediaStore.Video.Media.IS_PENDING, 1)
+        })!!
+        try {
+            // Publish a valid file, not an empty row that the media scanner may remove mid-test.
+            androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().context.assets
+                .open("timeline-test.mp4").use { input -> resolver.openOutputStream(uri)!!.use { input.copyTo(it) } }
+            resolver.update(uri, ContentValues().apply { put(MediaStore.Video.Media.IS_PENDING, 0) }, null, null)
+            compose.waitUntil(30_000) { compose.onAllNodesWithText("OmegaLayoutCheck").fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithText("Folders", useUnmergedTree = true).assertIsDisplayed()
+            compose.onNodeWithText("No", useUnmergedTree = true).assertDoesNotExist()
+            compose.onNodeWithText("1 folder", useUnmergedTree = true).assertIsDisplayed()
+            compose.onNodeWithText("OmegaLayoutCheck").assertIsDisplayed()
+            screenshot("library-landscape")
+            compose.onNodeWithContentDescription("Settings", useUnmergedTree = true).performClick()
+            compose.waitForIdle()
+            screenshot("settings-landscape")
+            compose.onNodeWithContentDescription("Locker", useUnmergedTree = true).performClick()
+            compose.waitForIdle()
+            compose.onNodeWithText("Next: recovery").assertIsDisplayed().assertIsNotEnabled()
+            compose.onNodeWithText("4-digit PIN").assertExists()
+            compose.onNodeWithText("Confirm PIN").performTextInput("1234")
+            // The first field label is localized; select the two editable PIN fields in order.
+            compose.onAllNodes(hasSetTextAction())[0].performTextInput("1234")
+            androidx.test.espresso.Espresso.closeSoftKeyboard()
+            compose.onNodeWithText("Next: recovery").performScrollTo().assertIsDisplayed().assertIsEnabled()
+            screenshot("locker-setup-landscape")
+            compose.onNodeWithText("Next: recovery").performClick()
+            compose.waitForIdle()
+            screenshot("locker-recovery-before-scroll")
+            compose.onNodeWithText("Create vault").performScrollTo()
+            screenshot("locker-recovery-landscape")
+            compose.onNodeWithText("Create vault").assertIsDisplayed().assertIsNotEnabled()
+        } finally {
+            try { resolver.delete(uri, null, null) }
+            catch (gone: SecurityException) {
+                org.junit.Assert.assertFalse("Fixture must already be unavailable",
+                    com.arslandaim.omegaplayer.ui.feature.library.canReadHistoryMedia(compose.activity, uri.toString()))
+            }
+        }
+    }
+}
